@@ -20,7 +20,7 @@ The project is being built in phases. This table tracks what exists today.
 | Phase | Scope | State |
 | --- | --- | --- |
 | 1 | Repo skeleton, compose (Kafka/Postgres/Redis), CI, Makefile, schemas | done |
-| 2 | Order book and matching engine | planned |
+| 2 | Order book and matching engine | done |
 | 3 | `marketsim` normal participants | planned |
 | 4 | `ingest` validation, enrichment, DLQ | planned |
 | 5 | Manipulation injector with ground truth | planned |
@@ -41,10 +41,13 @@ make infra   # start Kafka (KRaft), Postgres and Redis
 make test    # unit, race and integration tests, run inside Docker
 make lint    # gofmt, go vet, staticcheck
 make proto   # lint protobuf schemas and regenerate Go code
+make bench-micro    # Go micro-benchmarks, saved under docs/results/microbench
+make mutation-test  # check the order book tests catch injected engine bugs
 make help    # list all targets
 ```
 
 ## Documentation
 
 - [Architecture](docs/architecture.md)
+- [Matching engine](docs/matching-engine.md)
 - [Architecture decision records](docs/adr/README.md)
