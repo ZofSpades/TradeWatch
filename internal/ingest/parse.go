@@ -121,6 +121,26 @@ func Parse(r Raw, ref Reference, ingestedAt int64) (*twpb.MarketEvent, *Rejectio
 	if err != nil {
 		return nil, reject(ReasonSchemaMismatch, "%v", err)
 	}
+	return normalize(ev, r.Key, r.Meta, ref, ingestedAt)
+}
+
+// Normalize validates, normalizes and enriches an already decoded raw
+// event, applying exactly the checks Parse applies to its payload, so that
+// a program can run the ingest stage in-process without Kafka. msg is
+// modified in place.
+func Normalize(msg proto.Message, ref Reference, ingestedAt int64) (*twpb.MarketEvent, *Rejection) {
+	ev, err := events.Wrap(msg)
+	if err != nil {
+		return nil, reject(ReasonSchemaMismatch, "%v", err)
+	}
+	h := events.HeaderOf(ev)
+	if h == nil {
+		return nil, reject(ReasonMissingField, "header")
+	}
+	return normalize(ev, []byte(h.GetSymbol()), kafka.EventMeta{}, ref, ingestedAt)
+}
+
+func normalize(ev *twpb.MarketEvent, key []byte, meta kafka.EventMeta, ref Reference, ingestedAt int64) (*twpb.MarketEvent, *Rejection) {
 	h := events.HeaderOf(ev)
 	if h == nil {
 		return nil, reject(ReasonMissingField, "header")
@@ -137,14 +157,14 @@ func Parse(r Raw, ref Reference, ingestedAt int64) (*twpb.MarketEvent, *Rejectio
 	case h.EventTimeNs <= 0:
 		return nil, reject(ReasonInvalidField, "header.event_time_ns %d", h.EventTimeNs)
 	}
-	if key := strings.ToUpper(strings.TrimSpace(string(r.Key))); key != h.Symbol {
-		return nil, reject(ReasonKeyMismatch, "record key %q, payload symbol %q", r.Key, h.Symbol)
+	if k := strings.ToUpper(strings.TrimSpace(string(key))); k != h.Symbol {
+		return nil, reject(ReasonKeyMismatch, "record key %q, payload symbol %q", key, h.Symbol)
 	}
-	if r.Meta.HasSeq && r.Meta.Seq != h.Seq {
-		return nil, reject(ReasonHeaderMismatch, "tw-seq %d, payload seq %d", r.Meta.Seq, h.Seq)
+	if meta.HasSeq && meta.Seq != h.Seq {
+		return nil, reject(ReasonHeaderMismatch, "tw-seq %d, payload seq %d", meta.Seq, h.Seq)
 	}
-	if r.Meta.Session != "" && r.Meta.Session != h.SessionId {
-		return nil, reject(ReasonHeaderMismatch, "tw-session %q, payload session %q", r.Meta.Session, h.SessionId)
+	if meta.Session != "" && meta.Session != h.SessionId {
+		return nil, reject(ReasonHeaderMismatch, "tw-session %q, payload session %q", meta.Session, h.SessionId)
 	}
 	inst, ok := ref.Instrument(h.Symbol)
 	if !ok {
@@ -156,7 +176,7 @@ func Parse(r Raw, ref Reference, ingestedAt int64) (*twpb.MarketEvent, *Rejectio
 
 	enr := &twpb.Enrichment{LiquidityTier: inst.GetLiquidityTier(), TickSize: inst.GetTickSize()}
 	var rej *Rejection
-	switch m := msg.(type) {
+	switch m := events.Unwrap(ev).(type) {
 	case *twpb.OrderEvent:
 		rej = checkOrder(m, inst, ref, enr)
 	case *twpb.CancelEvent:

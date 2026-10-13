@@ -102,6 +102,27 @@ func TestParseAcceptsAndEnriches(t *testing.T) {
 	}
 }
 
+// Normalize runs the same checks and enrichment as Parse on a decoded
+// message, for programs that run the ingest stage in-process.
+func TestNormalizeMatchesParse(t *testing.T) {
+	ref := testRef()
+	bad := validOrder()
+	bad.Quantity = 0
+	for _, c := range []struct {
+		feed Feed
+		msg  proto.Message
+	}{{FeedOrders, validOrder()}, {FeedCancels, validCancel()}, {FeedTrades, validTrade()}, {FeedBook, validBook()}, {FeedOrders, bad}} {
+		want, wantRej := Parse(raw(t, c.feed, c.msg), ref, 7)
+		got, gotRej := Normalize(proto.Clone(c.msg), ref, 7)
+		if (wantRej == nil) != (gotRej == nil) || wantRej != nil && wantRej.Reason != gotRej.Reason {
+			t.Fatalf("%T: Parse rejection %v, Normalize rejection %v", c.msg, wantRej, gotRej)
+		}
+		if !proto.Equal(got, want) {
+			t.Errorf("%T: Normalize = %v, Parse = %v", c.msg, got, want)
+		}
+	}
+}
+
 func TestParseNormalizesSymbolAndIdentifiers(t *testing.T) {
 	o := validOrder()
 	o.Header.Symbol = " qzap "
