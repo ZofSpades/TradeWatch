@@ -92,6 +92,13 @@ services:
       # About one record in 2,000 is corrupted on purpose, so the dead-letter
       # topic and sequence-gap handling are visible in the demo.
       TW_SIM_MALFORMED_RATE: "0.0005"
+      # Injected abuse: expected episodes per symbol per trading hour, and the
+      # probability that a symbol's close is marked in a session.
+      TW_SIM_INJECT_WASH_TRADING: "0.6"
+      TW_SIM_INJECT_SPOOFING: "0.6"
+      TW_SIM_INJECT_MOMENTUM_IGNITION: "0.4"
+      TW_SIM_INJECT_QUOTE_STUFFING: "0.6"
+      TW_SIM_INJECT_MARKING_THE_CLOSE: "0.25"
       TW_HTTP_ADDR: ":8090"
     volumes:
       - recordings:/recordings
