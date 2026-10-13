@@ -58,7 +58,7 @@ func startIngest(t *testing.T, kcfg kafka.Config, group string, gapTimeout time.
 	t.Helper()
 	cfg := Config{
 		Kafka: kcfg, Group: group, CommitInterval: 200 * time.Millisecond, GapTimeout: gapTimeout,
-		MaxHeld: 20_000, RefDataTimeout: 2 * time.Second,
+		MaxHeld: 20_000, IdleAfter: 10 * time.Minute, RefDataTimeout: 2 * time.Second,
 	}
 	svc := NewService(cfg, prometheus.NewRegistry(), quiet)
 	cl, err := kafka.NewClient(kcfg, quiet, svc.ClientOptions()...)

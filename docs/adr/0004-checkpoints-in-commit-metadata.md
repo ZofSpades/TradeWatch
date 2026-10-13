@@ -73,8 +73,13 @@ is sent as a raw `kmsg.OffsetCommitRequest` (ADR-0001).
 - Duplicates can only appear after a crash between a flush and the next
   commit (at most `TW_INGEST_COMMIT_INTERVAL`, 1 s by default). They are
   exact copies with the same (session, symbol, seq).
-- State stays small and bounded. The metadata size limit caps how many
-  sequences can be open on one partition: hundreds, far more than this
-  system uses.
+- State stays small, but the metadata size limit caps how many sequences
+  can be open on one partition. With live session IDs such as
+  `live-20261013T090000Z-001|QZAP`, each entry takes about 40 bytes, which
+  allows roughly 90 open sequences. The compose stack has three or four
+  per partition. A sequence leaves the checkpoint when its session closes,
+  or once it has been idle for `TW_INGEST_IDLE_AFTER` without closing, so
+  sessions abandoned by a marketsim restart do not accumulate (see
+  [ingest.md](../ingest.md)).
 - Standard lag tooling keeps working, because committed offsets track real
   progress.

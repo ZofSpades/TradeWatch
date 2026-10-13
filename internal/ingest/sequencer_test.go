@@ -252,6 +252,24 @@ func TestCheckpointRoundTripAndSizeLimit(t *testing.T) {
 	}
 }
 
+// ADR-0004 states that roughly 90 open sequences with live session IDs and
+// seven-digit sequence numbers fit in the commit metadata.
+func TestCheckpointCapacity(t *testing.T) {
+	cp := Checkpoint{Version: 1, At: time.Now().UnixNano(), Next: map[string]uint64{}}
+	symbols := []string{"QZAP", "MOSS", "VANT", "KELP"}
+	for n := 0; ; n++ {
+		if _, err := cp.Encode(); err != nil {
+			t.Logf("%d open sequences fit in %d bytes", n-1, maxCheckpointBytes)
+			if n-1 < 85 || n-1 > 95 {
+				t.Errorf("capacity is %d sequences; update ADR-0004", n-1)
+			}
+			return
+		}
+		key := SeqKey{fmt.Sprintf("live-20261013T090000Z-%03d", n/4), symbols[n%4]}
+		cp.Next[key.encode()] = 1_234_567
+	}
+}
+
 func TestPausableFeeds(t *testing.T) {
 	h := newHarness()
 	h.deliver(FeedOrders, mkEvent(k1, 5, FeedOrders, false))
@@ -281,6 +299,73 @@ func TestFeedNeededByAnyBlockedKeyIsNotPausable(t *testing.T) {
 	}
 	if !got[FeedBook] {
 		t.Error("book_snapshots is ahead for every blocked key and can be paused")
+	}
+}
+
+// A marketsim restart abandons its session without a CLOSED snapshot. Its
+// keys must leave the checkpoint, or every restart would add to commit
+// metadata until it exceeds the broker's size limit.
+func TestForgetIdleDropsAbandonedSequences(t *testing.T) {
+	h := newHarness()
+	live := SeqKey{"S2", "QZAP"}
+	h.deliver(FeedOrders, mkEvent(k1, 1, FeedOrders, false))
+	h.deliver(FeedOrders, mkEvent(live, 1, FeedOrders, false))
+	if n := h.s.ForgetIdle(10 * time.Minute); n != 0 {
+		t.Fatalf("forgot %d keys at the first sweep", n)
+	}
+	for seq := uint64(2); seq <= 11; seq++ { // k1 stops, live goes on
+		h.clock.t = h.clock.t.Add(time.Minute)
+		h.deliver(FeedOrders, mkEvent(live, seq, FeedOrders, false))
+		h.s.ForgetIdle(10 * time.Minute)
+	}
+	cp := h.s.Checkpoint(1)
+	if _, ok := cp.Next[k1.encode()]; ok || cp.Next[live.encode()] != 12 {
+		t.Fatalf("checkpoint.next = %v, want only the live key at 12", cp.Next)
+	}
+	if st := h.s.Stats(); st.Abandoned != 1 {
+		t.Errorf("abandoned = %d, want 1", st.Abandoned)
+	}
+
+	// A forgotten key that resumes starts over: once every feed has passed
+	// sequence number 1, it is reported lost.
+	h.out = nil
+	for f := Feed(0); f < numFeeds; f++ {
+		h.deliver(f, mkEvent(k1, uint64(f)+2, f, false))
+	}
+	h.s.CheckGaps(func() bool { return true })
+	if got := h.labels(); got != "1-1:gap/lost 2:order 3:cancel 4:trade 5:book" {
+		t.Fatalf("output after resuming %q", got)
+	}
+}
+
+// A key stays while records of it are held, and while a restart from the
+// committable offsets would read its records again.
+func TestForgetIdleKeepsKeysThatMayStillBeNeeded(t *testing.T) {
+	h := newHarness()
+	pinned := SeqKey{"S1", "MOSS"}
+	h.deliver(FeedOrders, mkEvent(pinned, 2, FeedOrders, false)) // waits for 1, holding the orders offset at 0
+	h.deliver(FeedOrders, mkEvent(k1, 1, FeedOrders, false))     // done, but above the committable offset
+	waiting := SeqKey{"S1", "VANT"}
+	h.deliver(FeedBook, mkEvent(waiting, 1, FeedBook, false))
+	h.deliver(FeedBook, mkEvent(waiting, 3, FeedBook, false)) // holds 3 until 2 is declared lost
+	h.s.ForgetIdle(time.Minute)
+	h.clock.t = h.clock.t.Add(2 * time.Minute)
+	if n := h.s.ForgetIdle(time.Minute); n != 0 {
+		t.Fatalf("forgot %d keys that are still needed", n)
+	}
+	h.s.CheckGaps(func() bool { return true }) // releases pinned and waiting
+	if h.s.Committable(FeedOrders) != 2 {
+		t.Fatalf("orders committable = %d, want 2", h.s.Committable(FeedOrders))
+	}
+	if n := h.s.ForgetIdle(time.Minute); n != 1 {
+		t.Fatalf("forgot %d keys, want only %v", n, k1)
+	}
+	h.clock.t = h.clock.t.Add(time.Minute)
+	if n := h.s.ForgetIdle(time.Minute); n != 2 {
+		t.Fatalf("forgot %d keys, want the two released ones", n)
+	}
+	if cp := h.s.Checkpoint(1); len(cp.Next) != 0 {
+		t.Errorf("checkpoint.next = %v, want empty", cp.Next)
 	}
 }
 

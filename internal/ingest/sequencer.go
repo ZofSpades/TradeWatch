@@ -41,6 +41,19 @@ type held struct {
 	reason string
 }
 
+// seen is the newest record of a sequence observed on one feed.
+type seen struct {
+	seq    uint64 // highest sequence number
+	offset int64  // offset of the latest record
+}
+
+// idleMark is when ForgetIdle first found a sequence's highest observed
+// sequence number unchanged.
+type idleMark struct {
+	seq   uint64
+	since time.Time
+}
+
 // SequencerStats counts what a sequencer did.
 type SequencerStats struct {
 	Released     uint64
@@ -49,6 +62,7 @@ type SequencerStats struct {
 	LostGaps     uint64 // gap markers emitted for records that never arrived
 	LostEvents   uint64 // sequence numbers covered by those markers
 	StaleRecords uint64 // records for a session that already closed
+	Abandoned    uint64 // sequences dropped by ForgetIdle
 }
 
 // Sequencer restores per-(session, symbol) sequence order for one
@@ -67,6 +81,9 @@ type SequencerStats struct {
 // not yet done. The Checkpoint of the next sequence per key is consistent
 // with those offsets: every record with a sequence number at or above a
 // key's next value sits at or after its feed's committable offset.
+//
+// A key leaves the sequencer when its session closes, or through
+// ForgetIdle when its producer stopped without closing it.
 type Sequencer struct {
 	emit       func(*twpb.MarketEvent)
 	now        func() time.Time
@@ -77,7 +94,8 @@ type Sequencer struct {
 	held     map[SeqKey]map[uint64]held
 	nHeld    int
 	blocked  map[SeqKey]time.Time
-	lastSeen [numFeeds]map[SeqKey]uint64
+	lastSeen [numFeeds]map[SeqKey]seen
+	idle     map[SeqKey]idleMark
 	offsets  [numFeeds]offsetTracker
 
 	closed      map[SeqKey]uint64
@@ -97,10 +115,10 @@ func NewSequencer(cp Checkpoint, gapTimeout time.Duration, now func() time.Time,
 		emit: emit, now: now, gapTimeout: gapTimeout,
 		next: map[SeqKey]uint64{}, lastTime: map[SeqKey]int64{},
 		held: map[SeqKey]map[uint64]held{}, blocked: map[SeqKey]time.Time{},
-		closed: map[SeqKey]uint64{},
+		idle: map[SeqKey]idleMark{}, closed: map[SeqKey]uint64{},
 	}
 	for f := range s.lastSeen {
-		s.lastSeen[f] = map[SeqKey]uint64{}
+		s.lastSeen[f] = map[SeqKey]seen{}
 	}
 	for k, n := range cp.Next {
 		if key, ok := decodeKey(k); ok {
@@ -149,14 +167,13 @@ func (s *Sequencer) ObserveUnsequenced(f Feed, offset int64) {
 // or nil if the record was dead-lettered with the given reason.
 func (s *Sequencer) Observe(f Feed, offset int64, key SeqKey, seq uint64, ev *twpb.MarketEvent, reason string) {
 	s.offsets[f].push(offset)
-	if seq > s.lastSeen[f][key] {
-		s.lastSeen[f][key] = seq
-	}
 	if _, ok := s.closed[key]; ok {
 		s.stats.StaleRecords++
 		s.offsets[f].markDone(offset)
 		return
 	}
+	ls := s.lastSeen[f][key]
+	s.lastSeen[f][key] = seen{seq: max(ls.seq, seq), offset: offset}
 	if seq < s.nextOf(key) {
 		s.stats.Duplicates++
 		s.offsets[f].markDone(offset)
@@ -224,13 +241,7 @@ func (s *Sequencer) close(key SeqKey, final uint64) {
 		delete(s.held[key], seq)
 		s.nHeld--
 	}
-	delete(s.held, key)
-	delete(s.next, key)
-	delete(s.lastTime, key)
-	delete(s.blocked, key)
-	for f := range s.lastSeen {
-		delete(s.lastSeen[f], key)
-	}
+	s.forget(key)
 	s.closed[key] = final
 	s.closedOrder = append(s.closedOrder, key)
 	if len(s.closedOrder) > maxClosed {
@@ -279,7 +290,7 @@ func (s *Sequencer) CheckGaps(caughtUp func() bool) {
 			next := s.nextOf(key)
 			passed := true
 			for f := range s.lastSeen {
-				if s.lastSeen[f][key] <= next {
+				if s.lastSeen[f][key].seq <= next {
 					passed = false
 					break
 				}
@@ -332,13 +343,68 @@ func (s *Sequencer) PausableFeeds() [numFeeds]bool {
 	for f := range s.lastSeen {
 		ok[f] = true
 		for k := range s.blocked {
-			if s.lastSeen[f][k] <= s.nextOf(k) {
+			if s.lastSeen[f][k].seq <= s.nextOf(k) {
 				ok[f] = false
 				break
 			}
 		}
 	}
 	return ok
+}
+
+// ForgetIdle drops the keys of sessions whose producer stopped without
+// closing them, which would otherwise accumulate in the checkpoint until it
+// outgrew the commit metadata limit. A key is dropped once nothing of it is
+// held, its highest sequence number has not changed for at least after, and
+// none of its records lies at or above a committable offset, so a restart
+// from a later commit cannot read them again. A dropped key that does
+// resume is treated as a new one: a gap marker from sequence number 1
+// reports its earlier records lost, as for any other gap. ForgetIdle
+// returns the number of keys dropped; calling it about once a second sets
+// the resolution of after. A non-positive after drops nothing.
+func (s *Sequencer) ForgetIdle(after time.Duration) int {
+	if after <= 0 {
+		return 0
+	}
+	now := s.now()
+	dropped := 0
+	for key := range s.next {
+		if len(s.held[key]) > 0 {
+			delete(s.idle, key)
+			continue
+		}
+		var newest uint64
+		reread := false
+		for f := range s.lastSeen {
+			if ls, ok := s.lastSeen[f][key]; ok {
+				newest = max(newest, ls.seq)
+				reread = reread || ls.offset >= s.offsets[f].base
+			}
+		}
+		mark, ok := s.idle[key]
+		if !ok || mark.seq != newest {
+			s.idle[key] = idleMark{seq: newest, since: now}
+			continue
+		}
+		if !reread && now.Sub(mark.since) >= after {
+			s.forget(key)
+			dropped++
+		}
+	}
+	s.stats.Abandoned += uint64(dropped)
+	return dropped
+}
+
+// forget drops every trace of a key other than a closed-session entry.
+func (s *Sequencer) forget(key SeqKey) {
+	delete(s.held, key)
+	delete(s.next, key)
+	delete(s.lastTime, key)
+	delete(s.blocked, key)
+	delete(s.idle, key)
+	for f := range s.lastSeen {
+		delete(s.lastSeen[f], key)
+	}
 }
 
 // ClosedEntry is a closed session remembered in a checkpoint.

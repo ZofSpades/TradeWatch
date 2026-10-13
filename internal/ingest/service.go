@@ -32,6 +32,11 @@ type Config struct {
 	// MaxHeld is the number of held records per partition above which feeds
 	// that are ahead get paused.
 	MaxHeld int
+	// IdleAfter is how long a sequence may go without new records before it
+	// is taken for abandoned (its session stopped without closing) and
+	// dropped from the checkpoint. Zero keeps every sequence until its
+	// session closes.
+	IdleAfter time.Duration
 	// RefDataTimeout bounds a reference-data catch-up for an unknown
 	// account, symbol or session.
 	RefDataTimeout time.Duration
@@ -46,6 +51,7 @@ func LoadConfig(env *config.Env) (Config, error) {
 		CommitInterval: env.Duration("TW_INGEST_COMMIT_INTERVAL", time.Second),
 		GapTimeout:     env.Duration("TW_INGEST_GAP_TIMEOUT", 5*time.Second),
 		MaxHeld:        env.Int("TW_INGEST_MAX_HELD", 20_000),
+		IdleAfter:      env.Duration("TW_INGEST_IDLE_AFTER", 10*time.Minute),
 		RefDataTimeout: env.Duration("TW_INGEST_REFDATA_TIMEOUT", 2*time.Second),
 		HTTPAddr:       env.String("TW_HTTP_ADDR", ":8091"),
 	}
@@ -54,6 +60,9 @@ func LoadConfig(env *config.Env) (Config, error) {
 	}
 	if cfg.CommitInterval <= 0 || cfg.GapTimeout <= 0 || cfg.MaxHeld <= 0 {
 		return cfg, errors.New("ingest: commit interval, gap timeout and max held must be positive")
+	}
+	if cfg.IdleAfter < 0 {
+		return cfg, errors.New("ingest: idle timeout must not be negative")
 	}
 	return cfg, cfg.Kafka.Validate()
 }
@@ -64,6 +73,7 @@ type serviceMetrics struct {
 	released   *prometheus.CounterVec
 	gaps       *prometheus.CounterVec
 	duplicates prometheus.Counter
+	abandoned  prometheus.Counter
 	held       prometheus.Gauge
 	paused     prometheus.Gauge
 	lag        prometheus.Gauge
@@ -86,6 +96,8 @@ func newServiceMetrics(reg prometheus.Registerer) *serviceMetrics {
 			Help: "Sequence gaps filled with a SequenceGap marker, by reason."}, []string{"reason"}),
 		duplicates: prometheus.NewCounter(prometheus.CounterOpts{Namespace: ns, Subsystem: sub, Name: "duplicates_total",
 			Help: "Raw records dropped because their sequence number was already released or held."}),
+		abandoned: prometheus.NewCounter(prometheus.CounterOpts{Namespace: ns, Subsystem: sub, Name: "abandoned_sequences_total",
+			Help: "Sequences dropped after going idle without their session closing."}),
 		held: prometheus.NewGauge(prometheus.GaugeOpts{Namespace: ns, Subsystem: sub, Name: "held_records",
 			Help: "Records waiting in the sequencer for an earlier sequence number."}),
 		paused: prometheus.NewGauge(prometheus.GaugeOpts{Namespace: ns, Subsystem: sub, Name: "paused_feeds",
@@ -101,7 +113,8 @@ func newServiceMetrics(reg prometheus.Registerer) *serviceMetrics {
 		latency: prometheus.NewHistogram(prometheus.HistogramOpts{Namespace: ns, Subsystem: sub, Name: "event_latency_seconds",
 			Help: "Wall-clock time from marketsim publishing an event to ingest releasing it.", Buckets: prometheus.ExponentialBuckets(0.0005, 2, 16)}),
 	}
-	reg.MustRegister(m.records, m.dlq, m.released, m.gaps, m.duplicates, m.held, m.paused, m.lag, m.assigned, m.commits, m.commitTime, m.latency)
+	reg.MustRegister(m.records, m.dlq, m.released, m.gaps, m.duplicates, m.abandoned, m.held, m.paused, m.lag, m.assigned,
+		m.commits, m.commitTime, m.latency)
 	return m
 }
 
@@ -227,6 +240,7 @@ func (s *Service) Run(ctx context.Context) error {
 		s.checkGaps(ctx)
 		s.backpressure()
 		if time.Since(lastCommit) >= s.cfg.CommitInterval {
+			s.forgetIdle()
 			s.commitLocked(ctx)
 			lastCommit = time.Now()
 		}
@@ -412,6 +426,15 @@ func (s *Service) commitLocked(ctx context.Context) error {
 	return nil
 }
 
+// forgetIdle drops the sequences of sessions that stopped without closing.
+func (s *Service) forgetIdle() {
+	for p, g := range s.groups {
+		if n := g.seq.ForgetIdle(s.cfg.IdleAfter); n > 0 {
+			s.log.Info("forgot sequences of abandoned sessions", "partition", p, "sequences", n)
+		}
+	}
+}
+
 func (s *Service) checkGaps(ctx context.Context) {
 	for p, g := range s.groups {
 		g.seq.CheckGaps(func() bool { return s.caughtUp(ctx, p, g) })
@@ -482,6 +505,7 @@ func (s *Service) updateGauges() {
 		s.m.duplicates.Add(float64(st.Duplicates - g.prev.Duplicates + st.StaleRecords - g.prev.StaleRecords))
 		s.m.gaps.WithLabelValues(GapDeadLetter).Add(float64(st.DeadLetter - g.prev.DeadLetter))
 		s.m.gaps.WithLabelValues(GapLost).Add(float64(st.LostGaps - g.prev.LostGaps))
+		s.m.abandoned.Add(float64(st.Abandoned - g.prev.Abandoned))
 		g.prev = st
 	}
 	s.m.held.Set(float64(held))

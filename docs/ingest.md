@@ -73,6 +73,20 @@ releases records strictly in `seq` order:
 - **Session close.** The `CLOSED` book snapshot ends a session. Its state is
   dropped, and only its final sequence number is remembered, so that late
   duplicates can be recognised.
+- **Abandoned sessions.** A session can also just stop, for example when
+  marketsim restarts mid-session. Its keys would then stay in the checkpoint
+  forever, and after enough restarts the checkpoint would outgrow the
+  commit-metadata limit and commits would fail. A key is therefore dropped
+  once all three of these hold:
+  - nothing of it is held;
+  - it has received no new sequence number for `TW_INGEST_IDLE_AFTER`
+    (10 min of wall time);
+  - none of its records sits at or above a committable offset, so a restart
+    from a later commit cannot read them again.
+
+  If a dropped key does resume, it is treated as a new key. A gap marker
+  from sequence number 1 reports its earlier records lost, like any other
+  gap.
 
 **Backpressure.** If a partition holds more than `TW_INGEST_MAX_HELD`
 records (20,000), ingest pauses the feeds that have already delivered a
@@ -138,6 +152,7 @@ and gap paths are therefore always active.
 | `tradewatch_ingest_events_released_total{kind}` | Events published to `market_events` |
 | `tradewatch_ingest_sequence_gaps_total{reason}` | Gap markers (`dead_letter`, `lost`) |
 | `tradewatch_ingest_duplicates_total` | Records dropped as duplicates or stale |
+| `tradewatch_ingest_abandoned_sequences_total` | Sequences dropped after going idle without their session closing |
 | `tradewatch_ingest_held_records` | Records waiting for an earlier sequence number |
 | `tradewatch_ingest_paused_feeds` | Feed partitions paused for backpressure |
 | `tradewatch_ingest_consumer_lag_records` | High watermark minus position, over owned partitions |
@@ -152,6 +167,7 @@ and gap paths are therefore always active.
 | `TW_INGEST_COMMIT_INTERVAL` | 1s | Flush and commit period |
 | `TW_INGEST_GAP_TIMEOUT` | 5s | Wait before declaring a missing record lost (feeds caught up) |
 | `TW_INGEST_MAX_HELD` | 20000 | Held records per partition before pausing feeds that are ahead |
+| `TW_INGEST_IDLE_AFTER` | 10m | Idle time after which an unclosed session's sequences are dropped; `0` keeps them |
 | `TW_INGEST_REFDATA_TIMEOUT` | 2s | Bound on a reference-data catch-up |
 | `TW_HTTP_ADDR` | `:8091` | Admin server |
 | `TW_KAFKA_*` | | See `internal/kafka.LoadConfig` |
