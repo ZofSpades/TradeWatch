@@ -18,6 +18,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math"
+	"math/rand/v2"
 	"time"
 
 	"github.com/ZofSpades/tradewatch/internal/events/twpb"
@@ -46,6 +48,9 @@ type Config struct {
 	// Symbols restricts the session to a subset of the universe; empty
 	// means all instruments.
 	Symbols []string
+	// Injection sets the rates of injected market abuse. The zero value
+	// injects nothing.
+	Injection Injection
 }
 
 // DefaultConfig returns a full 6.5-hour session with a 10-minute closing
@@ -78,7 +83,7 @@ func (c Config) validate() error {
 	case c.Activity <= 0:
 		return errors.New("sim: activity must be positive")
 	}
-	return nil
+	return c.Injection.Validate()
 }
 
 // Session describes the trading session being simulated.
@@ -105,7 +110,8 @@ type Symbol struct {
 	Book  *orderbook.Book
 	Phase twpb.TradingPhase
 
-	fair float64 // fair value, in price units
+	fair   float64 // fair value, in price units
+	impact float64
 }
 
 // Fair returns the symbol's current fair value in price units.
@@ -116,6 +122,13 @@ func (s *Symbol) Fair() float64 { return s.fair }
 // the simulation.
 type Emitter interface {
 	Emit(sym *Symbol, ev *orderbook.Event) error
+}
+
+// LabelEmitter is implemented by emitters that also receive the ground-truth
+// labels of injected abuse. Labels never travel with market events: they are
+// published separately, for the evaluator only.
+type LabelEmitter interface {
+	Label(l *twpb.GroundTruthLabel) error
 }
 
 // Agent is a simulated participant or piece of session machinery.
@@ -131,6 +144,7 @@ type Agent interface {
 type Fill struct {
 	Symbol    *Symbol
 	OrderID   uint64
+	TradeID   uint64
 	Side      orderbook.Side
 	Price     int64
 	Qty       int64
@@ -166,6 +180,7 @@ type Stats struct {
 	Cancels   uint64
 	Replaces  uint64
 	Snapshots uint64
+	Labels    uint64
 }
 
 type ownerKey struct {
@@ -192,6 +207,13 @@ type Sim struct {
 	closed      bool
 	err         error
 	stats       Stats
+
+	injection Injection
+	inbox     chan func(*Sim)
+	trigger   *rand.Rand
+	episodes  int
+	active    map[activeKey]bool
+	busy      map[string]bool
 }
 
 // New builds a session. Agents are created from the universe; call Run to
@@ -209,10 +231,14 @@ func New(cfg Config, uni *Universe, emit Emitter) (*Sim, error) {
 			ClosingStart: open + int64(cfg.Duration-cfg.ClosingWindow),
 			Close:        open + int64(cfg.Duration),
 		},
-		bySymbol: map[string]*Symbol{},
-		emit:     emit,
-		owners:   map[ownerKey]Agent{},
-		evs:      make([]orderbook.Event, 0, 64),
+		bySymbol:  map[string]*Symbol{},
+		emit:      emit,
+		owners:    map[ownerKey]Agent{},
+		evs:       make([]orderbook.Event, 0, 64),
+		injection: cfg.Injection,
+		inbox:     make(chan func(*Sim), 64),
+		active:    map[activeKey]bool{},
+		busy:      map[string]bool{},
 	}
 	want := map[string]bool{}
 	for _, sym := range cfg.Symbols {
@@ -226,7 +252,7 @@ func New(cfg Config, uni *Universe, emit Emitter) (*Sim, error) {
 		if err != nil {
 			return nil, fmt.Errorf("sim: %s: %w", in.Symbol, err)
 		}
-		sym := &Symbol{Instrument: in, Index: len(s.symbols), Book: book, fair: float64(in.RefPrice)}
+		sym := &Symbol{Instrument: in, Index: len(s.symbols), Book: book, fair: float64(in.RefPrice), impact: paramsFor(in.Tier).impact}
 		s.symbols = append(s.symbols, sym)
 		s.bySymbol[in.Symbol] = sym
 	}
@@ -291,6 +317,7 @@ func (s *Sim) Run(ctx context.Context) error {
 				return err
 			}
 		}
+		s.drainInbox()
 		act := heap.Pop(&s.queue).(action)
 		s.now = act.at
 		if next := act.agent.Wake(s); next >= 0 {
@@ -301,6 +328,55 @@ func (s *Sim) Run(ctx context.Context) error {
 		}
 	}
 	return s.err
+}
+
+// ErrBusy is returned by Do when too many commands are already queued.
+var ErrBusy = errors.New("sim: command queue is full")
+
+// Do runs fn on the simulation goroutine between two actions, at the
+// current simulated time. It is safe to call from any goroutine and is how
+// live controls (injection rates, triggered scenarios) reach a running
+// session. Commands make a run depend on when they arrive, so reproducible
+// runs do not use them.
+func (s *Sim) Do(fn func(*Sim)) error {
+	select {
+	case s.inbox <- fn:
+		return nil
+	default:
+		return ErrBusy
+	}
+}
+
+func (s *Sim) drainInbox() {
+	for {
+		select {
+		case fn := <-s.inbox:
+			fn(s)
+		default:
+			return
+		}
+	}
+}
+
+// Injection returns the abuse rates currently in effect.
+func (s *Sim) Injection() Injection { return s.injection }
+
+// SetInjection changes the abuse rates from the next planning interval
+// on. It must be called on the simulation goroutine (for example via Do).
+func (s *Sim) SetInjection(in Injection) { s.injection = in }
+
+// Label publishes the ground-truth label of an injected episode. The label
+// ID is derived from the session and a per-session counter, so it is
+// reproducible.
+func (s *Sim) Label(l *twpb.GroundTruthLabel) {
+	s.stats.Labels++
+	l.SessionId = s.session.ID
+	l.LabelId = fmt.Sprintf("%s/%04d", s.session.ID, s.stats.Labels)
+	if le, ok := s.emit.(LabelEmitter); ok && s.err == nil {
+		if err := le.Label(l); err != nil {
+			s.err = err
+		}
+	}
 }
 
 // Submit sends a new order on behalf of agent a and returns its order ID.
@@ -376,6 +452,13 @@ func (s *Sim) dispatch(sym *Symbol, evs []orderbook.Event) {
 		}
 		switch ev.Kind {
 		case orderbook.EventTrade:
+			// Aggressive flow moves the fair value permanently (linear impact),
+			// so large one-sided trading moves prices for every participant.
+			signed := float64(ev.Qty)
+			if ev.Aggressor == orderbook.Sell {
+				signed = -signed
+			}
+			sym.fair *= math.Exp(sym.impact * signed)
 			s.notifyFill(sym, ev.BuyOrderID, orderbook.Buy, ev, ev.BuyLeaves)
 			s.notifyFill(sym, ev.SellOrderID, orderbook.Sell, ev, ev.SellLeaves)
 		case orderbook.EventCancelled:
@@ -401,7 +484,7 @@ func (s *Sim) notifyFill(sym *Symbol, id uint64, side orderbook.Side, ev *orderb
 	}
 	if h, ok := owner.(FillHandler); ok {
 		h.OnFill(s, Fill{
-			Symbol: sym, OrderID: id, Side: side, Price: ev.Price, Qty: ev.Qty,
+			Symbol: sym, OrderID: id, TradeID: ev.TradeID, Side: side, Price: ev.Price, Qty: ev.Qty,
 			Leaves: leaves, Aggressor: ev.Aggressor == side,
 		})
 	}

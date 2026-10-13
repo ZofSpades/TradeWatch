@@ -31,6 +31,18 @@ const (
 	RoleRetail
 	RoleInstitutional
 	RoleProp
+
+	// Roles used only by the manipulation injector.
+
+	// RoleWasher owns two accounts that trade with each other.
+	RoleWasher
+	// RoleRingMember colludes in a circular trading ring; every member of a
+	// ring is a different beneficial owner.
+	RoleRingMember
+	RoleSpoofer
+	RoleMomentumIgniter
+	RoleQuoteStuffer
+	RoleCloseMarker
 )
 
 // Account is a trading account in the simulated universe.
@@ -43,6 +55,8 @@ type Account struct {
 	Role            Role
 	// Firm groups the accounts of one legal entity, in generation order.
 	Firm int
+	// Ring is the trading ring a RoleRingMember account belongs to, from 1.
+	Ring int
 }
 
 // Universe is the fixed set of instruments and accounts a simulation runs
@@ -56,6 +70,18 @@ type Universe struct {
 
 // ByRole returns the accounts with the given role, in a stable order.
 func (u *Universe) ByRole(r Role) []*Account { return u.byRole[r] }
+
+// Rings returns the members of each trading ring, ring 1 first.
+func (u *Universe) Rings() [][]*Account {
+	var rings [][]*Account
+	for _, a := range u.byRole[RoleRingMember] {
+		for len(rings) < a.Ring {
+			rings = append(rings, nil)
+		}
+		rings[a.Ring-1] = append(rings[a.Ring-1], a)
+	}
+	return rings
+}
 
 // Account returns the account with the given ID.
 func (u *Universe) Account(id string) (*Account, bool) {
@@ -100,11 +126,24 @@ type firmSpec struct {
 	kind     twpb.AccountKind
 	name     string
 	accounts int
+	ring     int
 }
 
 var marketMakerFirms = []string{"Northbeam Liquidity", "Halcyon Markets", "Ferro Quant Partners"}
 var institutionalFirms = []string{"Bluewater Pension Trust", "Juniper Ridge Asset Mgmt", "Calloway Index Funds", "Sterling Oak Advisors", "Meridian Endowment", "Ashgrove Capital"}
 var propFirms = []string{"Arclight Trading", "Quillfeather Capital", "Driftwood Prop", "Copperline Securities"}
+
+// Firms whose accounts only the manipulation injector uses. Their kinds look
+// like any other participant's and nothing in reference data marks them.
+var (
+	washFirms     = []string{"Blackfen Holdings", "Oriel Street Partners", "Tamsin Ventures", "Grayhook Capital"}
+	ringMembers   = []string{"Lumen Bay Trading", "Kestrel Row LLC", "Pallas Point", "Cobalt Wharf", "Ivory Gate Partners", "Saltmarsh Capital", "Nimbus Lane", "Fernhill Markets", "Quarry Hill Assets"}
+	spoofers      = []string{"Vantage Arc Capital", "Redline Prop", "Halberd Trading", "Mistral Quant"}
+	momentumFirms = []string{"Zephyr Prop", "Corvid Capital", "Juno Rapids", "Brightwater Trading"}
+	quoteStuffers = []string{"Tachyon Systems", "Flicker Labs", "Hyperion Microstructure"}
+	closeMarkers  = []string{"Westgate Asset Mgmt", "Ostrava Partners", "Pinecrest Advisory", "Silverthorn Capital", "Harrowgate Funds", "Marlowe Street Capital", "Eastvale Partners", "Tidewater Investors"}
+	ringSize      = 3
+)
 
 const retailAccounts = 300
 
@@ -116,16 +155,43 @@ const retailAccounts = 300
 func DefaultUniverse() *Universe {
 	var firms []firmSpec
 	for _, n := range marketMakerFirms {
-		firms = append(firms, firmSpec{RoleMarketMaker, twpb.AccountKind_ACCOUNT_KIND_MARKET_MAKER, n, 1})
+		firms = append(firms, firmSpec{role: RoleMarketMaker, kind: twpb.AccountKind_ACCOUNT_KIND_MARKET_MAKER, name: n, accounts: 1})
 	}
 	for _, n := range institutionalFirms {
-		firms = append(firms, firmSpec{RoleInstitutional, twpb.AccountKind_ACCOUNT_KIND_INSTITUTIONAL, n, 2})
+		firms = append(firms, firmSpec{role: RoleInstitutional, kind: twpb.AccountKind_ACCOUNT_KIND_INSTITUTIONAL, name: n, accounts: 2})
 	}
 	for _, n := range propFirms {
-		firms = append(firms, firmSpec{RoleProp, twpb.AccountKind_ACCOUNT_KIND_PROPRIETARY, n, 1})
+		firms = append(firms, firmSpec{role: RoleProp, kind: twpb.AccountKind_ACCOUNT_KIND_PROPRIETARY, name: n, accounts: 1})
 	}
 	for i := 1; i <= retailAccounts; i++ {
-		firms = append(firms, firmSpec{RoleRetail, twpb.AccountKind_ACCOUNT_KIND_RETAIL, fmt.Sprintf("Retail client %03d", i), 1})
+		firms = append(firms, firmSpec{role: RoleRetail, kind: twpb.AccountKind_ACCOUNT_KIND_RETAIL, name: fmt.Sprintf("Retail client %03d", i), accounts: 1})
+	}
+	prop, retail, inst := twpb.AccountKind_ACCOUNT_KIND_PROPRIETARY, twpb.AccountKind_ACCOUNT_KIND_RETAIL, twpb.AccountKind_ACCOUNT_KIND_INSTITUTIONAL
+	for i, n := range washFirms {
+		kind := prop
+		if i%2 == 1 {
+			kind = retail
+		}
+		firms = append(firms, firmSpec{role: RoleWasher, kind: kind, name: n, accounts: 2})
+	}
+	for i, n := range ringMembers {
+		firms = append(firms, firmSpec{role: RoleRingMember, kind: retail, name: n, accounts: 1, ring: 1 + i/ringSize})
+	}
+	for _, n := range spoofers {
+		firms = append(firms, firmSpec{role: RoleSpoofer, kind: prop, name: n, accounts: 1})
+	}
+	for _, n := range momentumFirms {
+		firms = append(firms, firmSpec{role: RoleMomentumIgniter, kind: prop, name: n, accounts: 1})
+	}
+	for _, n := range quoteStuffers {
+		firms = append(firms, firmSpec{role: RoleQuoteStuffer, kind: prop, name: n, accounts: 1})
+	}
+	for i, n := range closeMarkers {
+		kind := inst
+		if i%2 == 1 {
+			kind = prop
+		}
+		firms = append(firms, firmSpec{role: RoleCloseMarker, kind: kind, name: n, accounts: 1})
 	}
 	return buildUniverse(defaultInstruments(), firms)
 }
@@ -167,6 +233,7 @@ func buildUniverse(instruments []Instrument, firms []firmSpec) *Universe {
 				Name:            name,
 				Role:            f.role,
 				Firm:            fi,
+				Ring:            f.ring,
 			}
 			next++
 			u.Accounts = append(u.Accounts, a)

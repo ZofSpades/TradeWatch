@@ -127,13 +127,16 @@ func (a *fundamentalAgent) Wake(s *Sim) int64 {
 
 // tierParams are the participant intensities for one liquidity tier.
 type tierParams struct {
-	marketMakers     int
-	mmWake           time.Duration
-	mmHalfSpread     float64 // ticks
-	mmSize           float64 // shares
-	mmMaxInventory   int64
-	noiseArrival     time.Duration
-	noiseMedianSize  float64
+	marketMakers    int
+	mmWake          time.Duration
+	mmHalfSpread    float64 // ticks
+	mmSize          float64 // shares
+	mmMaxInventory  int64
+	noiseArrival    time.Duration
+	noiseMedianSize float64
+	// impact is the permanent change in fair value, as a fraction, per share
+	// traded aggressively (signed by the aggressor's side).
+	impact           float64
 	parents          int // institutional parent orders per session
 	parentMedianSize float64
 	momentumTraders  int
@@ -144,19 +147,19 @@ func paramsFor(tier twpb.LiquidityTier) tierParams {
 	switch tier {
 	case twpb.LiquidityTier_LIQUIDITY_TIER_HIGH:
 		return tierParams{
-			marketMakers: 3, mmWake: 400 * time.Millisecond, mmHalfSpread: 1.2, mmSize: 400, mmMaxInventory: 6_000,
+			marketMakers: 3, mmWake: 400 * time.Millisecond, mmHalfSpread: 1.2, mmSize: 400, mmMaxInventory: 6_000, impact: 4e-7,
 			noiseArrival: 700 * time.Millisecond, noiseMedianSize: 120, parents: 3, parentMedianSize: 60_000,
 			momentumTraders: 2, momentumSize: 1_500,
 		}
 	case twpb.LiquidityTier_LIQUIDITY_TIER_MEDIUM:
 		return tierParams{
-			marketMakers: 2, mmWake: 700 * time.Millisecond, mmHalfSpread: 2.2, mmSize: 300, mmMaxInventory: 4_000,
+			marketMakers: 2, mmWake: 700 * time.Millisecond, mmHalfSpread: 2.2, mmSize: 300, mmMaxInventory: 4_000, impact: 1e-6,
 			noiseArrival: 1600 * time.Millisecond, noiseMedianSize: 90, parents: 2, parentMedianSize: 25_000,
 			momentumTraders: 1, momentumSize: 800,
 		}
 	default:
 		return tierParams{
-			marketMakers: 1, mmWake: 1200 * time.Millisecond, mmHalfSpread: 4, mmSize: 200, mmMaxInventory: 2_500,
+			marketMakers: 1, mmWake: 1200 * time.Millisecond, mmHalfSpread: 4, mmSize: 200, mmMaxInventory: 2_500, impact: 2.5e-6,
 			noiseArrival: 4 * time.Second, noiseMedianSize: 70, parents: 1, parentMedianSize: 8_000,
 			momentumTraders: 1, momentumSize: 400,
 		}
@@ -165,7 +168,7 @@ func paramsFor(tier twpb.LiquidityTier) tierParams {
 
 // defaultAgents builds the session machinery and the normal participants.
 func defaultAgents(s *Sim) []Agent {
-	agents := []Agent{&sessionAgent{}}
+	agents := []Agent{&sessionAgent{}, newPlanner(s)}
 	mms := s.uni.ByRole(RoleMarketMaker)
 	insts := s.uni.ByRole(RoleInstitutional)
 	props := s.uni.ByRole(RoleProp)
