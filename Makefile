@@ -63,6 +63,10 @@ test-unit: ## Run unit tests with the local Go toolchain
 lint: env ## Run gofmt, go vet and staticcheck (in Docker)
 	$(TOOLBOX) sh -c 'test -z "$$(gofmt -l .)" || { gofmt -l .; exit 1; }; go vet ./... && go vet -tags=integration ./... && go run honnef.co/go/tools/cmd/staticcheck@$(STATICCHECK_VERSION) ./...'
 
+.PHONY: bench-micro
+bench-micro: env ## Run Go micro-benchmarks and save results to docs/results/microbench
+	$(TOOLBOX) bash scripts/bench-micro.sh orderbook ./internal/orderbook
+
 .PHONY: proto
 proto: env ## Lint the protobuf schemas and regenerate Go code (in Docker)
 	$(TOOLBOX) sh -c 'go install github.com/bufbuild/buf/cmd/buf@$(BUF_VERSION) && go install google.golang.org/protobuf/cmd/protoc-gen-go@$(PROTOC_GEN_GO_VERSION) && buf lint && buf format --diff --exit-code && buf generate'
