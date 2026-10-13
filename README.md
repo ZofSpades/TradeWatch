@@ -22,7 +22,7 @@ The project is being built in phases. This table tracks what exists today.
 | 1 | Repo skeleton, compose (Kafka/Postgres/Redis), CI, Makefile, schemas | done |
 | 2 | Order book and matching engine | done |
 | 3 | `marketsim` normal participants | done |
-| 4 | `ingest` validation, enrichment, DLQ | planned |
+| 4 | `ingest` validation, enrichment, DLQ | done |
 | 5 | Manipulation injector with ground truth | planned |
 | 6 | `detector` framework, rule engine, five detectors | planned |
 | 7 | `alertsink`, Postgres, `api` | planned |
@@ -37,7 +37,7 @@ Requirements: Docker with the compose plugin, and GNU make. On Windows, use
 WSL2.
 
 ```sh
-make up      # build and start the stack (Kafka, Postgres, Redis, marketsim)
+make up      # build and start the stack (Kafka, Postgres, Redis, marketsim, ingest)
 make infra   # start only Kafka (KRaft), Postgres and Redis
 make test    # unit, race and integration tests, run inside Docker
 make lint    # gofmt, go vet, staticcheck
@@ -52,4 +52,5 @@ make help    # list all targets
 - [Architecture](docs/architecture.md)
 - [Matching engine](docs/matching-engine.md)
 - [Market simulator](docs/simulator.md)
+- [Ingest](docs/ingest.md)
 - [Architecture decision records](docs/adr/README.md)

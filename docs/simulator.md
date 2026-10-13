@@ -165,6 +165,7 @@ dashboard reaches it through the authenticated API (Phase 7).
 | `TW_SIM_SPEED` | 1 | Simulated seconds per wall second (`realtime`) |
 | `TW_SIM_RATE` | 10000 | Events per wall second (`rate`) |
 | `TW_SIM_RECORD_DIR` | unset | Directory for session recordings |
+| `TW_SIM_MALFORMED_RATE` | 0 | Fraction of published records corrupted on purpose (garbage values, stripped headers, negative quantities, unknown accounts, off-tick prices) to exercise validation and the dead-letter topic; recordings are never corrupted |
 | `TW_SIM_AUTOSTART` | true | Start the first session immediately |
 | `TW_KAFKA_*` | | See `internal/kafka.LoadConfig` |
 
