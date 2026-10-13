@@ -51,6 +51,11 @@ type Config struct {
 	Speed float64
 	Rate  float64
 
+	// MalformedRate is the fraction of published records deliberately
+	// corrupted to exercise validation and the dead-letter topic. Recordings
+	// always hold the clean events.
+	MalformedRate float64
+
 	// RecordDir, when set, receives one recording file per session.
 	RecordDir string
 	// AutoStart starts the first session immediately; otherwise the
@@ -76,6 +81,7 @@ func LoadConfig(env *config.Env) (Config, error) {
 		Speed:            env.Float("TW_SIM_SPEED", 1),
 		Rate:             env.Float("TW_SIM_RATE", 10_000),
 		RecordDir:        env.String("TW_SIM_RECORD_DIR", ""),
+		MalformedRate:    env.Float("TW_SIM_MALFORMED_RATE", 0),
 		AutoStart:        env.Bool("TW_SIM_AUTOSTART", true),
 		HTTPAddr:         env.String("TW_HTTP_ADDR", ":8090"),
 	}
@@ -109,6 +115,9 @@ func (c Config) Validate() error {
 	}
 	if c.Sessions < 0 {
 		return fmt.Errorf("marketsim: sessions must be >= 0")
+	}
+	if c.MalformedRate < 0 || c.MalformedRate > 1 {
+		return fmt.Errorf("marketsim: malformed rate must be within [0, 1], got %v", c.MalformedRate)
 	}
 	return c.Kafka.Validate()
 }

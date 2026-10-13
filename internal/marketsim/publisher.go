@@ -124,6 +124,7 @@ type publisher struct {
 	metrics *publishMetrics
 	onEvent func(eventTime int64)
 
+	corrupt   *corrupter
 	keys      map[string][]byte
 	counters  [5]prometheus.Counter
 	lastFlush time.Time
@@ -132,9 +133,9 @@ type publisher struct {
 	err error
 }
 
-func newPublisher(ctx context.Context, cl *kgo.Client, topics kafka.Topics, session string, pace *pacer, rec *recording.Writer, m *publishMetrics, onEvent func(int64)) *publisher {
+func newPublisher(ctx context.Context, cl *kgo.Client, topics kafka.Topics, session string, pace *pacer, rec *recording.Writer, m *publishMetrics, corrupt *corrupter, onEvent func(int64)) *publisher {
 	p := &publisher{
-		ctx: ctx, cl: cl, topics: topics, session: session, pace: pace, rec: rec,
+		ctx: ctx, cl: cl, topics: topics, session: session, pace: pace, rec: rec, corrupt: corrupt,
 		metrics: m, onEvent: onEvent, keys: map[string][]byte{},
 	}
 	for feed, name := range map[sim.Feed]string{sim.FeedOrders: "orders", sim.FeedCancels: "cancels", sim.FeedTrades: "trades", sim.FeedBook: "book_snapshots"} {
@@ -209,10 +210,11 @@ func (p *publisher) Emit(sym *sim.Symbol, ev *ob.Event) error {
 	}
 	feed := sim.FeedOf(ev.Kind)
 	meta := kafka.EventMeta{Schema: schemaOfFeed[feed], Session: p.session, Seq: ev.Seq, HasSeq: true}
+	value, headers := p.corrupt.apply(msg, value, meta.Headers())
 	// The client context, not the session context, is used for producing:
 	// stopping a session must still deliver what was already handed over.
 	p.cl.Produce(context.Background(), &kgo.Record{
-		Topic: p.topic(feed), Key: p.key(sym.Symbol), Value: value, Headers: meta.Headers(),
+		Topic: p.topic(feed), Key: p.key(sym.Symbol), Value: value, Headers: headers,
 	}, p.delivered)
 	p.counters[feed].Inc()
 	if p.onEvent != nil {

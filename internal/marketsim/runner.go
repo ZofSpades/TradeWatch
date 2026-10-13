@@ -34,6 +34,7 @@ type Runner struct {
 	uni     *sim.Universe
 	pace    *pacer
 	pm      *publishMetrics
+	corrupt *corrupter
 	prefix  string
 	running prometheus.Gauge
 	done    prometheus.Counter
@@ -55,12 +56,13 @@ type Runner struct {
 func NewRunner(cfg Config, cl *kgo.Client, reg prometheus.Registerer, log *slog.Logger) *Runner {
 	r := &Runner{
 		cfg: cfg, log: log, cl: cl, adm: kadm.NewClient(cl),
-		uni:    sim.DefaultUniverse(),
-		pace:   newPacer(cfg.Pace, cfg.Speed, cfg.Rate),
-		pm:     newPublishMetrics(reg),
-		prefix: cfg.prefix(time.Now()),
-		state:  "stopped",
-		wake:   make(chan struct{}, 1),
+		uni:     sim.DefaultUniverse(),
+		pace:    newPacer(cfg.Pace, cfg.Speed, cfg.Rate),
+		pm:      newPublishMetrics(reg),
+		corrupt: newCorrupter(cfg.MalformedRate, cfg.Seed, reg),
+		prefix:  cfg.prefix(time.Now()),
+		state:   "stopped",
+		wake:    make(chan struct{}, 1),
 		running: prometheus.NewGauge(prometheus.GaugeOpts{
 			Namespace: metrics.Namespace, Subsystem: "marketsim", Name: "running",
 			Help: "1 while a session is being simulated.",
@@ -179,7 +181,7 @@ func (r *Runner) runSession(ctx, sctx context.Context, n int) error {
 			return fmt.Errorf("create recording: %w", err)
 		}
 	}
-	pub := newPublisher(sctx, r.cl, r.cfg.Kafka.Topics(), scfg.SessionID, r.pace, rec, r.pm, func(t int64) {
+	pub := newPublisher(sctx, r.cl, r.cfg.Kafka.Topics(), scfg.SessionID, r.pace, rec, r.pm, r.corrupt, func(t int64) {
 		r.events.Add(1)
 		r.simTimeNs.Store(t)
 		r.pm.simTime.Set(float64(t) / 1e9)
