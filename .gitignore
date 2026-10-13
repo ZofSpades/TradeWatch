@@ -1,0 +1,33 @@
+# Local configuration and generated secrets
+.env
+
+# Build output and locally installed tools
+/bin/
+/.bin/
+/dist/
+
+# Go test and profiling artefacts
+*.test
+*.out
+*.prof
+coverage.*
+
+# Session recordings produced by marketsim
+/recordings/
+
+# Scratch output from local runs
+/tmp/
+
+# Web dashboard
+web/node_modules/
+web/dist/
+web/test-results/
+web/playwright-report/
+*.tsbuildinfo
+
+# Editors, tools and OS files
+.idea/
+.vscode/
+.claude/
+.DS_Store
+Thumbs.db
