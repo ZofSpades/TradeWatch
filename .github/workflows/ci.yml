@@ -1,0 +1,71 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  BUF_VERSION: v1.73.0
+  PROTOC_GEN_GO_VERSION: v1.36.12
+  STATICCHECK_VERSION: v0.8.2
+
+jobs:
+  go:
+    name: Go lint and unit tests (race)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+      - name: gofmt
+        run: |
+          unformatted="$(gofmt -l .)"
+          if [ -n "$unformatted" ]; then echo "$unformatted"; exit 1; fi
+      - name: go vet
+        run: go vet ./... && go vet -tags=integration ./...
+      - name: staticcheck
+        run: go run "honnef.co/go/tools/cmd/staticcheck@${STATICCHECK_VERSION}" ./...
+      - name: Unit tests with the race detector
+        run: go test -race -count=1 ./...
+
+  proto:
+    name: Protobuf schema
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+      - name: Install buf and protoc-gen-go
+        run: |
+          go install "github.com/bufbuild/buf/cmd/buf@${BUF_VERSION}"
+          go install "google.golang.org/protobuf/cmd/protoc-gen-go@${PROTOC_GEN_GO_VERSION}"
+      - name: Lint and format
+        run: buf lint && buf format --diff --exit-code
+      - name: Generated code is up to date
+        run: buf generate && git diff --exit-code
+      - name: No breaking changes against the base branch
+        if: github.event_name == 'pull_request'
+        run: buf breaking --against ".git#branch=origin/${{ github.base_ref }}"
+
+  integration:
+    name: Integration tests (docker compose)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: make test
+        run: make test
+      - name: Service logs
+        if: failure()
+        run: docker compose logs --no-color --tail=200
