@@ -31,7 +31,8 @@ infra: env ## Start Kafka, Postgres and Redis and wait until they are healthy
 	$(COMPOSE) up -d --wait $(INFRA)
 
 .PHONY: up
-up: infra ## Start the stack
+up: env ## Build and start the stack and wait until every service is healthy
+	$(COMPOSE) up -d --build --wait
 
 .PHONY: down
 down: ## Stop the stack, keeping data volumes
