@@ -1,0 +1,97 @@
+name: tradewatch
+
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+services:
+  kafka:
+    image: apache/kafka:4.2.2
+    hostname: kafka
+    environment:
+      CLUSTER_ID: TradeWatchLocalKRaft0w
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_LISTENERS: INTERNAL://:9092,EXTERNAL://:29092,CONTROLLER://:9093
+      KAFKA_ADVERTISED_LISTENERS: INTERNAL://kafka:9092,EXTERNAL://localhost:29092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT,CONTROLLER:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_LOG_DIRS: /var/lib/kafka/data
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "false"
+      KAFKA_NUM_PARTITIONS: 6
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_HEAP_OPTS: -Xms512m -Xmx1g
+    ports:
+      - "127.0.0.1:29092:29092"
+    volumes:
+      - kafka-data:/var/lib/kafka/data
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server localhost:9092 >/dev/null 2>&1"]
+      interval: 5s
+      timeout: 20s
+      retries: 30
+      start_period: 10s
+    logging: *default-logging
+
+  postgres:
+    image: postgres:17.10-alpine
+    environment:
+      POSTGRES_DB: tradewatch
+      POSTGRES_USER: tradewatch
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is not set - run `make env`}
+    ports:
+      - "127.0.0.1:15432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U tradewatch -d tradewatch"]
+      interval: 3s
+      timeout: 3s
+      retries: 30
+    logging: *default-logging
+
+  redis:
+    image: redis:8.8.3-alpine
+    # Redis only holds derived, rebuildable state (live views, counters), so
+    # persistence is off and the LRU policy bounds memory.
+    command: ["redis-server", "--save", "", "--appendonly", "no", "--maxmemory", "256mb", "--maxmemory-policy", "allkeys-lru"]
+    ports:
+      - "127.0.0.1:16379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 3s
+      timeout: 3s
+      retries: 30
+    logging: *default-logging
+
+  # Go toolchain used by `make test`, `make lint` and `make proto`, so that a
+  # machine with only Docker can run them. Not started by `docker compose up`.
+  toolbox:
+    image: golang:1.26.9-trixie
+    profiles: ["tools"]
+    working_dir: /src
+    environment:
+      GOFLAGS: -buildvcs=false
+      CGO_ENABLED: "1"
+      TW_IT_KAFKA_BROKERS: kafka:9092
+      TW_IT_POSTGRES_URL: postgres://tradewatch:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is not set - run `make env`}@postgres:5432/tradewatch?sslmode=disable
+      TW_IT_REDIS_ADDR: redis:6379
+    volumes:
+      - .:/src
+      - go-mod-cache:/go/pkg/mod
+      - go-build-cache:/root/.cache/go-build
+      - go-bin:/go/bin
+
+volumes:
+  kafka-data: {}
+  postgres-data: {}
+  go-mod-cache: {}
+  go-build-cache: {}
+  go-bin: {}
