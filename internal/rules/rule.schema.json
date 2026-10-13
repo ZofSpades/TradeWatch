@@ -1,0 +1,446 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://tradewatch.local/schema/rule.schema.json",
+  "title": "TradeWatch detection rule",
+  "description": "A versioned detection rule. Every detector has its own parameter schema in $defs; unknown fields are rejected everywhere.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "apiVersion",
+    "kind",
+    "metadata",
+    "spec"
+  ],
+  "properties": {
+    "apiVersion": {
+      "const": "tradewatch/v1"
+    },
+    "kind": {
+      "const": "DetectionRule"
+    },
+    "metadata": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "version",
+        "name",
+        "detector",
+        "taxonomy",
+        "severity",
+        "description"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^TW-[A-Z]+-[0-9]{3}$"
+        },
+        "version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "name": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 120
+        },
+        "detector": {
+          "enum": [
+            "wash_trading",
+            "spoofing",
+            "momentum_ignition",
+            "quote_stuffing",
+            "marking_the_close"
+          ]
+        },
+        "taxonomy": {
+          "type": "string",
+          "pattern": "^MAR-[A-Z]+$"
+        },
+        "severity": {
+          "enum": [
+            "low",
+            "medium",
+            "high",
+            "critical"
+          ]
+        },
+        "owner": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string",
+          "minLength": 10
+        }
+      }
+    },
+    "spec": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "enabled",
+        "suppress_for",
+        "params",
+        "explanation"
+      ],
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "suppress_for": {
+          "$ref": "#/$defs/duration"
+        },
+        "escalate_at_score": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "params": {
+          "type": "object"
+        },
+        "explanation": {
+          "type": "string",
+          "minLength": 10
+        }
+      }
+    }
+  },
+  "allOf": [
+    {
+      "$ref": "#/$defs/params_for/wash_trading"
+    },
+    {
+      "$ref": "#/$defs/params_for/spoofing"
+    },
+    {
+      "$ref": "#/$defs/params_for/momentum_ignition"
+    },
+    {
+      "$ref": "#/$defs/params_for/quote_stuffing"
+    },
+    {
+      "$ref": "#/$defs/params_for/marking_the_close"
+    }
+  ],
+  "$defs": {
+    "duration": {
+      "type": "string",
+      "pattern": "^([0-9]+(\\.[0-9]+)?(ns|us|ms|s|m|h))+$"
+    },
+    "ratio": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "positive": {
+      "type": "number",
+      "exclusiveMinimum": 0
+    },
+    "count": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "params_for": {
+      "wash_trading": {
+        "if": {
+          "properties": {
+            "metadata": {
+              "properties": {
+                "detector": {
+                  "const": "wash_trading"
+                }
+              }
+            }
+          }
+        },
+        "then": {
+          "properties": {
+            "spec": {
+              "properties": {
+                "params": {
+                  "$ref": "#/$defs/wash_trading"
+                }
+              }
+            }
+          }
+        }
+      },
+      "spoofing": {
+        "if": {
+          "properties": {
+            "metadata": {
+              "properties": {
+                "detector": {
+                  "const": "spoofing"
+                }
+              }
+            }
+          }
+        },
+        "then": {
+          "properties": {
+            "spec": {
+              "properties": {
+                "params": {
+                  "$ref": "#/$defs/spoofing"
+                }
+              }
+            }
+          }
+        }
+      },
+      "momentum_ignition": {
+        "if": {
+          "properties": {
+            "metadata": {
+              "properties": {
+                "detector": {
+                  "const": "momentum_ignition"
+                }
+              }
+            }
+          }
+        },
+        "then": {
+          "properties": {
+            "spec": {
+              "properties": {
+                "params": {
+                  "$ref": "#/$defs/momentum_ignition"
+                }
+              }
+            }
+          }
+        }
+      },
+      "quote_stuffing": {
+        "if": {
+          "properties": {
+            "metadata": {
+              "properties": {
+                "detector": {
+                  "const": "quote_stuffing"
+                }
+              }
+            }
+          }
+        },
+        "then": {
+          "properties": {
+            "spec": {
+              "properties": {
+                "params": {
+                  "$ref": "#/$defs/quote_stuffing"
+                }
+              }
+            }
+          }
+        }
+      },
+      "marking_the_close": {
+        "if": {
+          "properties": {
+            "metadata": {
+              "properties": {
+                "detector": {
+                  "const": "marking_the_close"
+                }
+              }
+            }
+          }
+        },
+        "then": {
+          "properties": {
+            "spec": {
+              "properties": {
+                "params": {
+                  "$ref": "#/$defs/marking_the_close"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "wash_trading": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "window",
+        "max_entry_gap",
+        "min_size_match",
+        "min_repeat",
+        "min_ring_length",
+        "max_ring_length",
+        "min_ring_balance"
+      ],
+      "properties": {
+        "window": {
+          "$ref": "#/$defs/duration"
+        },
+        "max_entry_gap": {
+          "$ref": "#/$defs/duration"
+        },
+        "min_size_match": {
+          "$ref": "#/$defs/ratio"
+        },
+        "min_repeat": {
+          "$ref": "#/$defs/count"
+        },
+        "min_ring_length": {
+          "type": "integer",
+          "minimum": 2,
+          "maximum": 6
+        },
+        "max_ring_length": {
+          "type": "integer",
+          "minimum": 2,
+          "maximum": 6
+        },
+        "min_ring_balance": {
+          "$ref": "#/$defs/ratio"
+        }
+      }
+    },
+    "spoofing": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "window",
+        "min_size_vs_depth",
+        "max_order_lifetime",
+        "max_cancel_after_fill",
+        "min_layers",
+        "cancel_group_window",
+        "min_cancel_ratio"
+      ],
+      "properties": {
+        "window": {
+          "$ref": "#/$defs/duration"
+        },
+        "min_size_vs_depth": {
+          "$ref": "#/$defs/positive"
+        },
+        "max_order_lifetime": {
+          "$ref": "#/$defs/duration"
+        },
+        "max_cancel_after_fill": {
+          "$ref": "#/$defs/duration"
+        },
+        "min_layers": {
+          "$ref": "#/$defs/count"
+        },
+        "cancel_group_window": {
+          "$ref": "#/$defs/duration"
+        },
+        "min_cancel_ratio": {
+          "$ref": "#/$defs/ratio"
+        }
+      }
+    },
+    "momentum_ignition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "impulse_window",
+        "min_impulse_orders",
+        "min_move_bps",
+        "min_move_sigma",
+        "volatility_lookback",
+        "min_aggressive_share",
+        "reversal_window",
+        "min_unwind_ratio"
+      ],
+      "properties": {
+        "impulse_window": {
+          "$ref": "#/$defs/duration"
+        },
+        "min_impulse_orders": {
+          "$ref": "#/$defs/count"
+        },
+        "min_move_bps": {
+          "$ref": "#/$defs/positive"
+        },
+        "min_move_sigma": {
+          "$ref": "#/$defs/positive"
+        },
+        "volatility_lookback": {
+          "$ref": "#/$defs/duration"
+        },
+        "min_aggressive_share": {
+          "$ref": "#/$defs/ratio"
+        },
+        "reversal_window": {
+          "$ref": "#/$defs/duration"
+        },
+        "min_unwind_ratio": {
+          "$ref": "#/$defs/ratio"
+        }
+      }
+    },
+    "quote_stuffing": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "burst_window",
+        "min_messages",
+        "min_rate_multiple",
+        "baseline_window",
+        "max_fill_ratio",
+        "max_median_lifetime"
+      ],
+      "properties": {
+        "burst_window": {
+          "$ref": "#/$defs/duration"
+        },
+        "min_messages": {
+          "$ref": "#/$defs/count"
+        },
+        "min_rate_multiple": {
+          "$ref": "#/$defs/positive"
+        },
+        "baseline_window": {
+          "$ref": "#/$defs/duration"
+        },
+        "max_fill_ratio": {
+          "$ref": "#/$defs/ratio"
+        },
+        "max_median_lifetime": {
+          "$ref": "#/$defs/duration"
+        }
+      }
+    },
+    "marking_the_close": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "lookback_before_close",
+        "min_volume_share",
+        "min_aggressive_fraction",
+        "min_concentration",
+        "min_move_bps",
+        "min_orders"
+      ],
+      "properties": {
+        "lookback_before_close": {
+          "$ref": "#/$defs/duration"
+        },
+        "min_volume_share": {
+          "$ref": "#/$defs/ratio"
+        },
+        "min_aggressive_fraction": {
+          "$ref": "#/$defs/ratio"
+        },
+        "min_concentration": {
+          "$ref": "#/$defs/ratio"
+        },
+        "min_move_bps": {
+          "$ref": "#/$defs/positive"
+        },
+        "min_orders": {
+          "$ref": "#/$defs/count"
+        }
+      }
+    }
+  }
+}

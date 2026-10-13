@@ -1,0 +1,36 @@
+apiVersion: tradewatch/v1
+kind: DetectionRule
+metadata:
+  id: TW-SPOOF-001
+  version: 1
+  name: Spoofing and layering
+  detector: spoofing
+  taxonomy: MAR-SPOOF
+  severity: high
+  owner: surveillance-engineering
+  description: >-
+    An account cancels several large orders on one side shortly after one of
+    its own orders executed on the other side. The orders were large relative
+    to the displayed depth, short-lived, and the account cancelled most of
+    what it placed on that side, which is the shape of orders placed to move
+    the book rather than to trade.
+spec:
+  enabled: true
+  suppress_for: 10m
+  escalate_at_score: 90
+  params:
+    window: 5m
+    min_size_vs_depth: 3
+    max_order_lifetime: 3m
+    max_cancel_after_fill: 2s
+    min_layers: 2
+    cancel_group_window: 500ms
+    min_cancel_ratio: 0.8
+  explanation: >-
+    Account {{index .Accounts 0}} cancelled {{int .F.layers}} large
+    {{.Facts.layer_side}} orders in {{.Symbol}}, up to {{num .F.size_vs_depth}}x
+    the displayed depth per level, {{ms .F.cancel_after_fill_ms}} after its own
+    {{.Facts.fill_side}} order executed for {{int .F.opposite_fill_qty}} shares.
+    The cancelled orders lived at most {{secs .F.max_lifetime_s}}, and the
+    account cancelled {{pct .F.cancel_ratio}} of the quantity it placed on the
+    {{.Facts.layer_side}} side in the window.

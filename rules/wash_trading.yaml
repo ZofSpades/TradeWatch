@@ -1,0 +1,41 @@
+apiVersion: tradewatch/v1
+kind: DetectionRule
+metadata:
+  id: TW-WASH-001
+  version: 1
+  name: Wash trading and circular trading
+  detector: wash_trading
+  taxonomy: MAR-WASH
+  severity: high
+  owner: surveillance-engineering
+  description: >-
+    Trades that change no beneficial ownership. Direct: both sides belong to
+    the same beneficial owner and the trade looks pre-arranged (the two orders
+    were entered within max_entry_gap at matching sizes), or the owner trades
+    with itself repeatedly. Ring: pre-arranged-looking trades among accounts of
+    different owners close a cycle (A to B to C to A) with balanced quantities.
+spec:
+  enabled: true
+  suppress_for: 15m
+  escalate_at_score: 90
+  params:
+    window: 10m
+    max_entry_gap: 1s
+    min_size_match: 0.9
+    min_repeat: 3
+    min_ring_length: 3
+    max_ring_length: 4
+    min_ring_balance: 0.5
+  explanation: >-
+    {{if eq .Facts.pattern "ring"}}Accounts {{join .Accounts ", "}}, held by
+    {{len .Owners}} different beneficial owners, traded {{.Symbol}} with each
+    other in a closed cycle of {{int .F.ring_length}} legs within
+    {{secs .F.ring_duration_s}}. Every leg looked pre-arranged, and the smallest
+    leg was {{pct .F.ring_balance}} of the largest, so the shares went round
+    the circle and back with no net change in ownership.{{else}}Accounts
+    {{join .Accounts ", "}} share the beneficial owner {{index .Owners 0}} and
+    traded {{.Symbol}} with each other: {{int .F.same_owner_trades}} same-owner
+    trade(s) in the window. The two orders of the latest trade were entered
+    {{ms .F.entry_gap_ms}} apart at a size match of {{pct .F.size_match}}{{if
+    gt .F.inside_spread 0.0}}, at a price inside the prevailing spread{{end}},
+    so no beneficial ownership changed.{{end}}

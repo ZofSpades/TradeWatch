@@ -1,0 +1,35 @@
+apiVersion: tradewatch/v1
+kind: DetectionRule
+metadata:
+  id: TW-CLOSE-001
+  version: 1
+  name: Marking the close
+  detector: marking_the_close
+  taxonomy: MAR-CLOSE
+  severity: high
+  owner: surveillance-engineering
+  description: >-
+    During the closing phase, an account trades aggressively in one direction,
+    takes a large share of the volume traded from its first closing-phase trade
+    on, and the price moves its way. Its activity is concentrated at the close
+    rather than spread over the preceding half hour, as a VWAP or TWAP
+    execution finishing at the close would be.
+spec:
+  enabled: true
+  suppress_for: 1h
+  escalate_at_score: 90
+  params:
+    lookback_before_close: 30m
+    min_volume_share: 0.15
+    min_aggressive_fraction: 0.8
+    min_concentration: 0.6
+    min_move_bps: 10
+    min_orders: 3
+  explanation: >-
+    In the closing phase of {{.Symbol}}, account {{index .Accounts 0}} sent
+    {{int .F.orders}} aggressive {{.Facts.direction}} orders and accounted for
+    {{pct .F.volume_share}} of the volume traded from its first closing-phase
+    trade on, {{pct .F.aggressive_fraction}} of it aggressive. The price moved
+    {{bps .F.move_bps}} its way since the closing phase began.
+    {{pct .F.concentration}} of the account's volume over the closing phase and
+    the {{.Facts.lookback}} before it fell in the closing phase.

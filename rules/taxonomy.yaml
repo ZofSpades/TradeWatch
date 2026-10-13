@@ -1,0 +1,43 @@
+apiVersion: tradewatch/v1
+kind: Taxonomy
+framework: EU Market Abuse Regulation (Regulation (EU) No 596/2014)
+note: >-
+  Indicative mapping of TradeWatch detectors to market-manipulation provisions
+  and indicators, for engineering purposes only. It is not legal advice and
+  not a complete reading of the regulation.
+codes:
+  - code: MAR-WASH
+    name: Wash trades and pre-arranged circular trading
+    abuse_type: wash_trading
+    references:
+      - "Art. 12(1)(a): transactions giving false or misleading signals as to supply, demand or price"
+      - "Annex I, A(c): transactions that lead to no change in beneficial ownership"
+
+  - code: MAR-SPOOF
+    name: Spoofing and layering
+    abuse_type: spoofing
+    references:
+      - "Art. 12(2)(c)(iii): orders creating a false or misleading signal about supply or demand"
+      - "Annex I, A(f): orders that change the representation of the order book and are removed before execution"
+
+  - code: MAR-MOMENTUM
+    name: Momentum ignition (pump and dump)
+    abuse_type: momentum_ignition
+    references:
+      - "Art. 12(2)(c)(iii): entering orders to initiate or exacerbate a trend"
+      - "Annex I, A(d): position reversals in a short period associated with significant price changes"
+      - "Annex I, A(e): trading concentrated in a short time span leading to a price change that is subsequently reversed"
+
+  - code: MAR-STUFF
+    name: Quote stuffing
+    abuse_type: quote_stuffing
+    references:
+      - "Art. 12(2)(c)(i): disrupting or delaying the functioning of the trading system"
+      - "Art. 12(2)(c)(ii): making it more difficult to identify genuine orders, including by overloading the order book"
+
+  - code: MAR-CLOSE
+    name: Marking the close
+    abuse_type: marking_the_close
+    references:
+      - "Art. 12(2)(b): buying or selling at the close with the effect of misleading investors acting on closing prices"
+      - "Annex I, A(g): trading at or around the time reference prices are calculated, leading to price changes"

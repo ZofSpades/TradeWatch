@@ -1,0 +1,32 @@
+apiVersion: tradewatch/v1
+kind: DetectionRule
+metadata:
+  id: TW-STUFF-001
+  version: 1
+  name: Quote stuffing
+  detector: quote_stuffing
+  taxonomy: MAR-STUFF
+  severity: medium
+  owner: surveillance-engineering
+  description: >-
+    An account floods the book with order and cancel messages, many times
+    faster than the busiest normal participants, with orders that live only
+    milliseconds and almost never trade.
+spec:
+  enabled: true
+  suppress_for: 10m
+  escalate_at_score: 95
+  params:
+    burst_window: 1s
+    min_messages: 100
+    min_rate_multiple: 10
+    baseline_window: 10m
+    max_fill_ratio: 0.02
+    max_median_lifetime: 250ms
+  explanation: >-
+    Account {{index .Accounts 0}} sent {{int .F.messages}} order and cancel
+    messages for {{.Symbol}} within {{.Facts.burst_window}}, a rate
+    {{num .F.rate_multiple}} times the busiest normal per-account rate over
+    the last {{.Facts.baseline_window}} ({{num .F.baseline_rate}} messages per
+    second). Its orders lived a median {{ms .F.median_lifetime_ms}}, and
+    {{pct .F.fill_ratio}} of them traded.

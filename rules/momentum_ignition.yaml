@@ -1,0 +1,37 @@
+apiVersion: tradewatch/v1
+kind: DetectionRule
+metadata:
+  id: TW-MOMO-001
+  version: 1
+  name: Momentum ignition (pump and dump)
+  detector: momentum_ignition
+  taxonomy: MAR-MOMENTUM
+  severity: high
+  owner: surveillance-engineering
+  description: >-
+    A burst of aggressive orders from one account moves the price far beyond
+    its recent volatility, measured from the account's own first aggressive
+    trade so that traders who merely follow a move are excluded, and the
+    same account then trades a large part of the position back in the other
+    direction.
+spec:
+  enabled: true
+  suppress_for: 15m
+  escalate_at_score: 90
+  params:
+    impulse_window: 60s
+    min_impulse_orders: 3
+    min_move_bps: 30
+    min_move_sigma: 4
+    volatility_lookback: 30m
+    min_aggressive_share: 0.4
+    reversal_window: 5m
+    min_unwind_ratio: 0.5
+  explanation: >-
+    Account {{index .Accounts 0}} sent {{int .F.impulse_orders}} aggressive
+    {{.Facts.direction}} orders in {{.Symbol}} over {{secs .F.impulse_s}},
+    {{pct .F.aggressive_share}} of all aggressive {{.Facts.direction}} volume in
+    that time. From its first trade the price moved {{bps .F.move_bps}}
+    ({{num .F.move_sigma}} times the volatility expected over that interval).
+    The account then traded {{pct .F.unwind_ratio}} of the
+    {{int .F.impulse_qty}} shares back in the opposite direction.
