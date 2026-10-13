@@ -32,6 +32,12 @@ type expectedKey struct {
 type inProcess struct {
 	session string
 	events  map[expectedKey][]byte
+	labels  []*twpb.GroundTruthLabel
+}
+
+func (e *inProcess) Label(l *twpb.GroundTruthLabel) error {
+	e.labels = append(e.labels, l)
+	return nil
 }
 
 func (e *inProcess) Emit(sym *sim.Symbol, ev *ob.Event) error {
@@ -79,6 +85,8 @@ func TestPublishedSessionMatchesInProcessSimulation(t *testing.T) {
 		Activity:         1,
 		Pace:             PaceFast,
 		AutoStart:        true,
+		// High rates so a five-minute session contains every scenario.
+		Injection: sim.Injection{WashTrading: 8, Spoofing: 8, MomentumIgnition: 8, QuoteStuffing: 8, MarkingTheClose: 1},
 	}
 	topics := cfg.Kafka.Topics()
 	prod, err := kafka.NewClient(cfg.Kafka, log)
@@ -184,5 +192,42 @@ func TestPublishedSessionMatchesInProcessSimulation(t *testing.T) {
 	if !keys["session/"+scfg.SessionID] || !keys["instrument/QZAP"] {
 		t.Errorf("refdata keys missing session or instrument: %d keys", len(keys))
 	}
+
+	// Ground truth: exactly the in-process labels, in order, on their own topic.
+	if len(want.labels) == 0 {
+		t.Fatal("the in-process session produced no labels; the test is not exercising injection")
+	}
+	gt, err := kafka.NewClient(cfg.Kafka, log, kgo.ConsumeTopics(topics.GroundTruth), kgo.ConsumeResetOffset(kgo.NewOffset().AtStart()))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer gt.Close()
+	var labels []*twpb.GroundTruthLabel
+	for len(labels) < len(want.labels) {
+		fetches := gt.PollFetches(ctx)
+		if ctx.Err() != nil {
+			t.Fatalf("groundtruth: got %d of %d labels", len(labels), len(want.labels))
+		}
+		fetches.EachRecord(func(r *kgo.Record) {
+			var l twpb.GroundTruthLabel
+			if err := events.Unmarshal(r.Value, &l); err != nil {
+				t.Fatal(err)
+			}
+			labels = append(labels, &l)
+		})
+	}
+	for i, l := range labels {
+		if !proto.Equal(l, want.labels[i]) {
+			t.Fatalf("label %d differs from the in-process simulation:\n%v\n%v", i, l, want.labels[i])
+		}
+	}
+	if st := runner.Status(); st.LabelsPublished != uint64(len(labels)) {
+		t.Errorf("status reports %d labels, %d were published", st.LabelsPublished, len(labels))
+	}
+	scenarios := map[string]int{}
+	for _, l := range labels {
+		scenarios[l.GetScenario()]++
+	}
 	t.Logf("verified %d events across %d symbols and %d refdata records", len(seen), len(maxSeq), len(keys))
+	t.Logf("verified %d ground-truth labels: %v", len(labels), scenarios)
 }

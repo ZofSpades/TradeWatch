@@ -68,6 +68,9 @@ func (s *Server) Handle(pattern string, h http.Handler) { s.mux.Handle(pattern, 
 // HandleFunc registers an additional route.
 func (s *Server) HandleFunc(pattern string, h http.HandlerFunc) { s.mux.HandleFunc(pattern, h) }
 
+// Handler returns the server's routes, for tests.
+func (s *Server) Handler() http.Handler { return s.mux }
+
 // SetReady sets the readiness reported by /readyz.
 func (s *Server) SetReady(ready bool) { s.ready.Store(ready) }
 

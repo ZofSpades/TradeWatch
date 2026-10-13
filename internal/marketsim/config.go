@@ -51,6 +51,9 @@ type Config struct {
 	Speed float64
 	Rate  float64
 
+	// Injection sets the rates of injected market abuse (see sim.Injection).
+	Injection sim.Injection
+
 	// MalformedRate is the fraction of published records deliberately
 	// corrupted to exercise validation and the dead-letter topic. Recordings
 	// always hold the clean events.
@@ -82,8 +85,15 @@ func LoadConfig(env *config.Env) (Config, error) {
 		Rate:             env.Float("TW_SIM_RATE", 10_000),
 		RecordDir:        env.String("TW_SIM_RECORD_DIR", ""),
 		MalformedRate:    env.Float("TW_SIM_MALFORMED_RATE", 0),
-		AutoStart:        env.Bool("TW_SIM_AUTOSTART", true),
-		HTTPAddr:         env.String("TW_HTTP_ADDR", ":8090"),
+		Injection: sim.Injection{
+			WashTrading:      env.Float("TW_SIM_INJECT_WASH_TRADING", 0),
+			Spoofing:         env.Float("TW_SIM_INJECT_SPOOFING", 0),
+			MomentumIgnition: env.Float("TW_SIM_INJECT_MOMENTUM_IGNITION", 0),
+			QuoteStuffing:    env.Float("TW_SIM_INJECT_QUOTE_STUFFING", 0),
+			MarkingTheClose:  env.Float("TW_SIM_INJECT_MARKING_THE_CLOSE", 0),
+		},
+		AutoStart: env.Bool("TW_SIM_AUTOSTART", true),
+		HTTPAddr:  env.String("TW_HTTP_ADDR", ":8090"),
 	}
 	if s := env.String("TW_SIM_START", ""); s != "" {
 		t, err := time.Parse(time.RFC3339, s)
@@ -116,6 +126,9 @@ func (c Config) Validate() error {
 	if c.Sessions < 0 {
 		return fmt.Errorf("marketsim: sessions must be >= 0")
 	}
+	if err := c.Injection.Validate(); err != nil {
+		return err
+	}
 	if c.MalformedRate < 0 || c.MalformedRate > 1 {
 		return fmt.Errorf("marketsim: malformed rate must be within [0, 1], got %v", c.MalformedRate)
 	}
@@ -137,6 +150,7 @@ func (c Config) sessionConfig(n int, prefix string, wallNow time.Time) sim.Confi
 	sc.SnapshotInterval = c.SnapshotInterval
 	sc.Activity = c.Activity
 	sc.Symbols = c.Symbols
+	sc.Injection = c.Injection
 	return sc
 }
 

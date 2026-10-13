@@ -89,6 +89,7 @@ func (p *pacer) wait(ctx context.Context, eventTime int64) error {
 // publishMetrics are the publisher's Prometheus series.
 type publishMetrics struct {
 	published *prometheus.CounterVec
+	labels    *prometheus.CounterVec
 	errors    prometheus.Counter
 	simTime   prometheus.Gauge
 }
@@ -99,6 +100,10 @@ func newPublishMetrics(reg prometheus.Registerer) *publishMetrics {
 			Namespace: "tradewatch", Subsystem: "marketsim", Name: "events_published_total",
 			Help: "Market events handed to the Kafka producer, by feed.",
 		}, []string{"feed"}),
+		labels: prometheus.NewCounterVec(prometheus.CounterOpts{
+			Namespace: "tradewatch", Subsystem: "marketsim", Name: "labels_published_total",
+			Help: "Ground-truth labels of injected abuse published, by scenario.",
+		}, []string{"scenario"}),
 		errors: prometheus.NewCounter(prometheus.CounterOpts{
 			Namespace: "tradewatch", Subsystem: "marketsim", Name: "produce_errors_total",
 			Help: "Records the producer failed to deliver.",
@@ -108,7 +113,7 @@ func newPublishMetrics(reg prometheus.Registerer) *publishMetrics {
 			Help: "Event time of the most recently published event, as a Unix timestamp.",
 		}),
 	}
-	reg.MustRegister(m.published, m.errors, m.simTime)
+	reg.MustRegister(m.published, m.labels, m.errors, m.simTime)
 	return m
 }
 
@@ -123,6 +128,7 @@ type publisher struct {
 	rec     *recording.Writer
 	metrics *publishMetrics
 	onEvent func(eventTime int64)
+	onLabel func()
 
 	corrupt   *corrupter
 	keys      map[string][]byte
@@ -219,6 +225,32 @@ func (p *publisher) Emit(sym *sim.Symbol, ev *ob.Event) error {
 	p.counters[feed].Inc()
 	if p.onEvent != nil {
 		p.onEvent(ev.Time)
+	}
+	return nil
+}
+
+// Label implements sim.LabelEmitter: ground truth goes to its own topic,
+// which only the evaluator reads, and into the recording.
+func (p *publisher) Label(l *twpb.GroundTruthLabel) error {
+	if err := p.failure(); err != nil {
+		return err
+	}
+	if p.rec != nil {
+		if err := p.rec.WriteLabel(l); err != nil {
+			return err
+		}
+	}
+	value, err := events.Marshal(l)
+	if err != nil {
+		return err
+	}
+	p.cl.Produce(context.Background(), &kgo.Record{
+		Topic: p.topics.GroundTruth, Key: []byte(l.GetSessionId()), Value: value,
+		Headers: kafka.EventMeta{Schema: events.SchemaGroundTruth, Session: l.GetSessionId()}.Headers(),
+	}, p.delivered)
+	p.metrics.labels.WithLabelValues(l.GetScenario()).Inc()
+	if p.onLabel != nil {
+		p.onLabel()
 	}
 	return nil
 }

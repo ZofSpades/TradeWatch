@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"net/http"
 	"path/filepath"
+	"slices"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -41,6 +42,7 @@ type Runner struct {
 
 	events    atomic.Uint64
 	simTimeNs atomic.Int64
+	labels    atomic.Uint64
 
 	mu        sync.Mutex
 	state     string
@@ -50,19 +52,22 @@ type Runner struct {
 	sessionNo int
 	completed int
 	wake      chan struct{}
+	injection sim.Injection
+	current   *sim.Sim
 }
 
 // NewRunner returns a runner publishing through cl.
 func NewRunner(cfg Config, cl *kgo.Client, reg prometheus.Registerer, log *slog.Logger) *Runner {
 	r := &Runner{
 		cfg: cfg, log: log, cl: cl, adm: kadm.NewClient(cl),
-		uni:     sim.DefaultUniverse(),
-		pace:    newPacer(cfg.Pace, cfg.Speed, cfg.Rate),
-		pm:      newPublishMetrics(reg),
-		corrupt: newCorrupter(cfg.MalformedRate, cfg.Seed, reg),
-		prefix:  cfg.prefix(time.Now()),
-		state:   "stopped",
-		wake:    make(chan struct{}, 1),
+		uni:       sim.DefaultUniverse(),
+		pace:      newPacer(cfg.Pace, cfg.Speed, cfg.Rate),
+		pm:        newPublishMetrics(reg),
+		corrupt:   newCorrupter(cfg.MalformedRate, cfg.Seed, reg),
+		prefix:    cfg.prefix(time.Now()),
+		state:     "stopped",
+		injection: cfg.Injection,
+		wake:      make(chan struct{}, 1),
 		running: prometheus.NewGauge(prometheus.GaugeOpts{
 			Namespace: metrics.Namespace, Subsystem: "marketsim", Name: "running",
 			Help: "1 while a session is being simulated.",
@@ -170,6 +175,9 @@ func (r *Runner) awaitStart(ctx context.Context) (context.Context, bool) {
 
 func (r *Runner) runSession(ctx, sctx context.Context, n int) error {
 	scfg := r.SessionConfig(n, time.Now())
+	r.mu.Lock()
+	scfg.Injection = r.injection
+	r.mu.Unlock()
 	var rec *recording.Writer
 	if r.cfg.RecordDir != "" {
 		cfgJSON, _ := json.Marshal(scfg)
@@ -186,6 +194,7 @@ func (r *Runner) runSession(ctx, sctx context.Context, n int) error {
 		r.simTimeNs.Store(t)
 		r.pm.simTime.Set(float64(t) / 1e9)
 	})
+	pub.onLabel = func() { r.labels.Add(1) }
 	s, err := sim.New(scfg, r.uni, pub)
 	if err != nil {
 		return err
@@ -203,7 +212,7 @@ func (r *Runner) runSession(ctx, sctx context.Context, n int) error {
 	}
 
 	r.mu.Lock()
-	r.session, r.sessionNo = s.Session(), n+1
+	r.session, r.sessionNo, r.current = s.Session(), n+1, s
 	r.mu.Unlock()
 	r.pace.reanchor()
 	r.running.Set(1)
@@ -211,6 +220,9 @@ func (r *Runner) runSession(ctx, sctx context.Context, n int) error {
 
 	runErr := s.Run(sctx)
 	r.running.Set(0)
+	r.mu.Lock()
+	r.current = nil
+	r.mu.Unlock()
 	flushCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 	flushErr := r.cl.Flush(flushCtx)
@@ -268,18 +280,20 @@ func RefDataKey(rd *twpb.RefDataRecord) string {
 
 // Status is the JSON body of GET /api/v1/sim/status.
 type Status struct {
-	State             string   `json:"state"`
-	SessionID         string   `json:"session_id,omitempty"`
-	SessionNumber     int      `json:"session_number"`
-	SessionsCompleted int      `json:"sessions_completed"`
-	SessionOpen       string   `json:"session_open,omitempty"`
-	SessionClose      string   `json:"session_close,omitempty"`
-	SimTime           string   `json:"sim_time,omitempty"`
-	EventsPublished   uint64   `json:"events_published"`
-	Pace              PaceMode `json:"pace"`
-	Speed             float64  `json:"speed"`
-	Rate              float64  `json:"rate"`
-	Symbols           []string `json:"symbols"`
+	State             string        `json:"state"`
+	SessionID         string        `json:"session_id,omitempty"`
+	SessionNumber     int           `json:"session_number"`
+	SessionsCompleted int           `json:"sessions_completed"`
+	SessionOpen       string        `json:"session_open,omitempty"`
+	SessionClose      string        `json:"session_close,omitempty"`
+	SimTime           string        `json:"sim_time,omitempty"`
+	EventsPublished   uint64        `json:"events_published"`
+	Pace              PaceMode      `json:"pace"`
+	Speed             float64       `json:"speed"`
+	Rate              float64       `json:"rate"`
+	Symbols           []string      `json:"symbols"`
+	Injection         sim.Injection `json:"injection"`
+	LabelsPublished   uint64        `json:"labels_published"`
 }
 
 // Status returns the runner's current state.
@@ -290,6 +304,7 @@ func (r *Runner) Status() Status {
 	st := Status{
 		State: r.state, SessionNumber: r.sessionNo, SessionsCompleted: r.completed,
 		EventsPublished: r.events.Load(), Pace: mode, Speed: speed, Rate: rate,
+		Injection: r.injection, LabelsPublished: r.labels.Load(),
 	}
 	if r.session.ID != "" {
 		st.SessionID = r.session.ID
@@ -300,20 +315,60 @@ func (r *Runner) Status() Status {
 		st.SimTime = time.Unix(0, t).UTC().Format(time.RFC3339Nano)
 	}
 	for _, in := range r.uni.Instruments {
-		if len(r.cfg.Symbols) == 0 || contains(r.cfg.Symbols, in.Symbol) {
+		if len(r.cfg.Symbols) == 0 || slices.Contains(r.cfg.Symbols, in.Symbol) {
 			st.Symbols = append(st.Symbols, in.Symbol)
 		}
 	}
 	return st
 }
 
-func contains(xs []string, x string) bool {
-	for _, v := range xs {
-		if v == x {
-			return true
-		}
+// ErrNoSession is returned when a scenario is triggered while no session is
+// being simulated.
+var ErrNoSession = errors.New("marketsim: no session is running")
+
+// SetInjection changes the abuse rates. A running session picks them up at
+// its next planning interval; later sessions start with them.
+func (r *Runner) SetInjection(in sim.Injection) error {
+	if err := in.Validate(); err != nil {
+		return err
 	}
-	return false
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.injection = in
+	if r.current != nil {
+		return r.current.Do(func(s *sim.Sim) { s.SetInjection(in) })
+	}
+	return nil
+}
+
+// Trigger runs a labelled scenario on a symbol of the running session (an
+// empty symbol picks one at random). The scenario starts at the current
+// simulated time; marking the close starts shortly before the close.
+func (r *Runner) Trigger(scenario, symbol string) error {
+	if !slices.Contains(sim.Scenarios, scenario) {
+		return fmt.Errorf("%w %q", sim.ErrUnknownScenario, scenario)
+	}
+	if symbol != "" && !slices.Contains(r.Status().Symbols, symbol) {
+		return fmt.Errorf("marketsim: unknown symbol %q", symbol)
+	}
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if r.current == nil {
+		return ErrNoSession
+	}
+	return r.current.Do(func(s *sim.Sim) {
+		if err := s.Trigger(scenario, symbol); err != nil {
+			r.log.Warn("scenario not started", "scenario", scenario, "symbol", symbol, "err", err)
+			return
+		}
+		r.log.Info("scenario triggered", "scenario", scenario, "symbol", symbol, "sim_time", time.Unix(0, s.Now()).UTC())
+	})
+}
+
+// ScenarioRequest is the JSON body of POST /api/v1/sim/scenarios.
+type ScenarioRequest struct {
+	Scenario string `json:"scenario"`
+	Symbol   string `json:"symbol,omitempty"`
 }
 
 // PaceRequest is the JSON body of PUT /api/v1/sim/pace.
@@ -350,6 +405,39 @@ func (r *Runner) Register(srv *metrics.Server) {
 		}
 		r.pace.set(p.Mode, p.Speed, p.Rate)
 		writeJSON(w, http.StatusOK, r.Status())
+	})
+	srv.HandleFunc("GET /api/v1/sim/injection", func(w http.ResponseWriter, _ *http.Request) {
+		writeJSON(w, http.StatusOK, r.Status().Injection)
+	})
+	srv.HandleFunc("PUT /api/v1/sim/injection", func(w http.ResponseWriter, req *http.Request) {
+		var in sim.Injection
+		if err := json.NewDecoder(http.MaxBytesReader(w, req.Body, 1<<16)).Decode(&in); err != nil {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid JSON body"})
+			return
+		}
+		if err := r.SetInjection(in); err != nil {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
+			return
+		}
+		writeJSON(w, http.StatusOK, r.Status())
+	})
+	srv.HandleFunc("GET /api/v1/sim/scenarios", func(w http.ResponseWriter, _ *http.Request) {
+		writeJSON(w, http.StatusOK, map[string][]string{"scenarios": sim.Scenarios})
+	})
+	srv.HandleFunc("POST /api/v1/sim/scenarios", func(w http.ResponseWriter, req *http.Request) {
+		var sr ScenarioRequest
+		if err := json.NewDecoder(http.MaxBytesReader(w, req.Body, 1<<16)).Decode(&sr); err != nil {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid JSON body"})
+			return
+		}
+		switch err := r.Trigger(sr.Scenario, sr.Symbol); {
+		case errors.Is(err, ErrNoSession), errors.Is(err, sim.ErrBusy):
+			writeJSON(w, http.StatusConflict, map[string]string{"error": err.Error()})
+		case err != nil:
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
+		default:
+			writeJSON(w, http.StatusAccepted, map[string]string{"scenario": sr.Scenario, "symbol": sr.Symbol, "status": "accepted"})
+		}
 	})
 }
 
