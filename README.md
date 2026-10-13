@@ -23,7 +23,7 @@ The project is being built in phases. This table tracks what exists today.
 | 2 | Order book and matching engine | done |
 | 3 | `marketsim` normal participants | done |
 | 4 | `ingest` validation, enrichment, DLQ | done |
-| 5 | Manipulation injector with ground truth | planned |
+| 5 | Manipulation injector with ground truth | done |
 | 6 | `detector` framework, rule engine, five detectors | planned |
 | 7 | `alertsink`, Postgres, `api` | planned |
 | 8 | `evaluator` and first results | planned |
@@ -52,5 +52,6 @@ make help    # list all targets
 - [Architecture](docs/architecture.md)
 - [Matching engine](docs/matching-engine.md)
 - [Market simulator](docs/simulator.md)
+- [Injected abuse and ground truth](docs/manipulation.md)
 - [Ingest](docs/ingest.md)
 - [Architecture decision records](docs/adr/README.md)

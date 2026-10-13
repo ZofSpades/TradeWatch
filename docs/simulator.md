@@ -64,6 +64,11 @@ The participants are:
 - 4 proprietary trading firms.
 - 300 retail clients, each its own beneficial owner, trading through one of
   three brokers.
+- A pool of accounts that only the manipulation injector uses: four wash
+  firms with two accounts each, three trading rings of three
+  differently-owned accounts, four spoofers, four momentum igniters, three
+  quote stuffers and eight close markers. See
+  [manipulation.md](manipulation.md).
 
 Account, owner and entity IDs are assigned through a fixed permutation. An
 ID such as `ACC-0137` says nothing about the account's role, and the
@@ -78,7 +83,7 @@ positives for the detectors.
 
 | Participant | Behaviour | Lookalike of |
 | --- | --- | --- |
-| Fundamentals (one per symbol) | The fair value follows a geometric random walk at the symbol's daily volatility, updated every 500 ms. A news jump of ±0.4–1.2% happens about once every four trading hours. | Momentum ignition: large moves with no manipulator behind them |
+| Fundamentals (one per symbol) | The fair value follows a geometric random walk at the symbol's daily volatility, updated every 500 ms. A news jump of ±0.4–1.2% happens about once every four trading hours. Aggressive trades also move the fair value permanently: each aggressive share moves it by 4e-7, 1e-6 or 2.5e-6 (high, medium and low tier), signed by the aggressor's side, so large one-sided flow moves prices for everyone. | Momentum ignition: large moves with no manipulator behind them |
 | Market makers (1–3 per symbol, by tier) | Quote both sides around fair value with a tier-dependent half-spread and lognormal sizes. Quotes are shaded towards top-of-book imbalance and skewed against inventory, within an inventory limit. They re-quote on exponential wake-ups (mean 0.4–1.2 s), mostly by cancel/replace, and never cross the book. | Spoofing and quote stuffing: very high cancel and replace rates |
 | Noise traders (one pool per symbol) | Poisson arrivals from 300 retail accounts. 45% are marketable (a market IOC or a marketable limit IOC). The rest are passive DAY limits at or near the touch, cancelled after a random lifetime (mean 45 s) if unfilled. | Background flow |
 | Institutional parents (1–3 per symbol) | One desk works a parent order of lognormal size over 15–60% of the session on a TWAP or VWAP schedule. VWAP follows a U-shaped intraday volume curve. The desk posts passive children at the touch, crosses the spread when behind schedule or when a child has rested too long, and finishes aggressively. A quarter of parents end at the close. | Marking the close, momentum ignition: sustained one-sided aggressive flow |
@@ -86,8 +91,9 @@ positives for the detectors.
 
 Because market makers shade quotes towards book imbalance, displayed depth
 moves prices. This is the mechanism spoofing exploits, so injected spoofing
-(Phase 5) actually works in the simulation rather than being a pattern in
-isolation.
+actually works in the simulation rather than being a pattern in isolation.
+Likewise, because aggressive flow has price impact, momentum ignition and
+marking the close actually move prices, and the momentum traders follow.
 
 Some beneficial owners hold several accounts (the institutional desks). Two
 desks of one firm can therefore occasionally trade with each other by
@@ -128,7 +134,7 @@ four market feeds ([ADR-0003](adr/0003-partitioning-and-ordering.md)).
 When `TW_SIM_RECORD_DIR` is set, each session is also written to
 `<session>.twrec.gz` (`internal/recording`). A recording holds a header with
 the simulator configuration, the reference data, every market event in
-emission order, and (from Phase 5) the ground-truth labels. Recordings keep
+emission order, and the ground-truth labels of injected abuse. Recordings keep
 `published_at` at zero, so recordings of the same configuration are
 identical. The writer flushes every two seconds. A crash therefore loses at
 most the last two seconds, and everything before that remains readable.
@@ -144,6 +150,9 @@ The admin server (`TW_HTTP_ADDR`, default `:8090`) serves `/metrics`,
 | `POST /api/v1/sim/start` | Start (or resume with a new session) |
 | `POST /api/v1/sim/stop` | End the current session early and pause |
 | `PUT /api/v1/sim/pace` | `{"mode": "realtime"\|"fast"\|"rate", "speed": 1, "rate": 10000}` |
+| `GET`, `PUT /api/v1/sim/injection` | Read or change the injection rates, for example `{"wash_trading": 0.6, "spoofing": 0.6}`. A running session applies them from its next planning minute |
+| `GET /api/v1/sim/scenarios` | List the injectable scenarios |
+| `POST /api/v1/sim/scenarios` | `{"scenario": "spoofing.layering", "symbol": "QZAP"}` starts a labelled scenario now. Returns 409 if no session is running |
 
 In compose, this port is reachable only on the internal network. The
 dashboard reaches it through the authenticated API (Phase 7).
@@ -166,6 +175,8 @@ dashboard reaches it through the authenticated API (Phase 7).
 | `TW_SIM_RATE` | 10000 | Events per wall second (`rate`) |
 | `TW_SIM_RECORD_DIR` | unset | Directory for session recordings |
 | `TW_SIM_MALFORMED_RATE` | 0 | Fraction of published records corrupted on purpose (garbage values, stripped headers, negative quantities, unknown accounts, off-tick prices) to exercise validation and the dead-letter topic; recordings are never corrupted |
+| `TW_SIM_INJECT_WASH_TRADING`, `..._SPOOFING`, `..._MOMENTUM_IGNITION`, `..._QUOTE_STUFFING` | 0 | Injected episodes per symbol per trading hour |
+| `TW_SIM_INJECT_MARKING_THE_CLOSE` | 0 | Probability that a symbol's close is marked in a session |
 | `TW_SIM_AUTOSTART` | true | Start the first session immediately |
 | `TW_KAFKA_*` | | See `internal/kafka.LoadConfig` |
 
