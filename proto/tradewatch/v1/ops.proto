@@ -1,0 +1,71 @@
+syntax = "proto3";
+
+package tradewatch.v1;
+
+import "tradewatch/v1/market.proto";
+import "tradewatch/v1/refdata.proto";
+import "tradewatch/v1/surveillance.proto";
+
+option go_package = "github.com/ZofSpades/tradewatch/internal/events/twpb;twpb";
+
+// DeadLetter wraps a record that a pipeline stage rejected, together with the
+// reason. It is the value type of the `dlq` topic.
+message DeadLetter {
+  string source_topic = 1;
+  int32 source_partition = 2;
+  int64 source_offset = 3;
+  bytes key = 4;
+  bytes value = 5;
+  map<string, string> headers = 6;
+  // Machine-readable reason code, for example "decode_error".
+  string reason = 7;
+  // Human-readable description of the failure.
+  string detail = 8;
+  // Pipeline stage that rejected the record.
+  string stage = 9;
+  int64 failed_at_ns = 10;
+}
+
+// RuleDocument is one versioned detection rule as loaded by a detector.
+message RuleDocument {
+  string rule_id = 1;
+  uint32 version = 2;
+  // SHA-256 of the canonical rule source.
+  string digest = 3;
+  string detector = 4;
+  string name = 5;
+  string taxonomy_code = 6;
+  bool enabled = 7;
+  // Original YAML source.
+  bytes source = 8;
+}
+
+// RuleSetSnapshot is published on the `rules_audit` topic every time a
+// detector instance loads or reloads its rules.
+message RuleSetSnapshot {
+  string ruleset_digest = 1;
+  int64 loaded_at_ns = 2;
+  string loaded_by = 3;
+  repeated RuleDocument rules = 4;
+}
+
+// RecordingHeader is the first entry of a session recording file.
+message RecordingHeader {
+  uint32 format_version = 1;
+  string session_id = 2;
+  int64 created_at_ns = 3;
+  // Simulator configuration that produced the recording, as JSON.
+  string config_json = 4;
+}
+
+// RecordingEntry is one length-delimited record of a session recording.
+// A recording holds everything needed to replay a session deterministically:
+// reference data, raw market events in sequence order and ground truth.
+message RecordingEntry {
+  oneof entry {
+    RecordingHeader header = 1;
+    RefDataRecord refdata = 2;
+    MarketEvent event = 3;
+    GroundTruthLabel label = 4;
+  }
+}

@@ -1,0 +1,62 @@
+syntax = "proto3";
+
+package tradewatch.v1;
+
+option go_package = "github.com/ZofSpades/tradewatch/internal/events/twpb;twpb";
+
+enum AccountKind {
+  ACCOUNT_KIND_UNSPECIFIED = 0;
+  ACCOUNT_KIND_MARKET_MAKER = 1;
+  ACCOUNT_KIND_RETAIL = 2;
+  ACCOUNT_KIND_INSTITUTIONAL = 3;
+  ACCOUNT_KIND_PROPRIETARY = 4;
+}
+
+enum LiquidityTier {
+  LIQUIDITY_TIER_UNSPECIFIED = 0;
+  LIQUIDITY_TIER_HIGH = 1;
+  LIQUIDITY_TIER_MEDIUM = 2;
+  LIQUIDITY_TIER_LOW = 3;
+}
+
+// Account maps a trading account to the party that ultimately benefits from
+// its trades. Several accounts may share a beneficial owner.
+message Account {
+  string account_id = 1;
+  string beneficial_owner_id = 2;
+  // Legal entity (firm) the beneficial owner trades through.
+  string entity_id = 3;
+  AccountKind kind = 4;
+  string display_name = 5;
+}
+
+message Instrument {
+  string symbol = 1;
+  string name = 2;
+  // Minimum price increment, in price units (1/10,000).
+  int64 tick_size = 3;
+  // Minimum quantity increment, in shares.
+  int64 lot_size = 4;
+  LiquidityTier liquidity_tier = 5;
+  // Opening reference price, in price units.
+  int64 reference_price = 6;
+}
+
+// TradingSession describes one simulated trading day.
+message TradingSession {
+  string session_id = 1;
+  int64 open_time_ns = 2;
+  // Start of the closing phase (reference-price window).
+  int64 closing_phase_time_ns = 3;
+  int64 close_time_ns = 4;
+  uint64 seed = 5;
+}
+
+// RefDataRecord is the value type of the compacted `refdata` topic.
+message RefDataRecord {
+  oneof record {
+    Account account = 1;
+    Instrument instrument = 2;
+    TradingSession session = 3;
+  }
+}

@@ -1,0 +1,136 @@
+syntax = "proto3";
+
+package tradewatch.v1;
+
+import "tradewatch/v1/market.proto";
+
+option go_package = "github.com/ZofSpades/tradewatch/internal/events/twpb;twpb";
+
+enum AbuseType {
+  ABUSE_TYPE_UNSPECIFIED = 0;
+  ABUSE_TYPE_WASH_TRADING = 1;
+  ABUSE_TYPE_SPOOFING = 2;
+  ABUSE_TYPE_MOMENTUM_IGNITION = 3;
+  ABUSE_TYPE_QUOTE_STUFFING = 4;
+  ABUSE_TYPE_MARKING_THE_CLOSE = 5;
+}
+
+// GroundTruthLabel describes one abusive episode injected by the simulator.
+// Labels are published on the `groundtruth` topic, which only the evaluator
+// reads; detectors never see them.
+message GroundTruthLabel {
+  string label_id = 1;
+  string session_id = 2;
+  AbuseType abuse_type = 3;
+  // Injector variant, for example "wash.direct" or "wash.ring".
+  string scenario = 4;
+  string symbol = 5;
+  repeated string account_ids = 6;
+  repeated string beneficial_owner_ids = 7;
+  // Event-time window covering every order and trade of the episode.
+  int64 start_time_ns = 8;
+  int64 end_time_ns = 9;
+  repeated uint64 order_ids = 10;
+  repeated uint64 trade_ids = 11;
+  map<string, string> params = 12;
+}
+
+enum Severity {
+  SEVERITY_UNSPECIFIED = 0;
+  SEVERITY_LOW = 1;
+  SEVERITY_MEDIUM = 2;
+  SEVERITY_HIGH = 3;
+  SEVERITY_CRITICAL = 4;
+}
+
+// Feature is one measured quantity a rule compared against a threshold.
+message Feature {
+  string name = 1;
+  double value = 2;
+  double threshold = 3;
+  // Comparison applied: ">=", ">", "<=" or "<".
+  string op = 4;
+  bool breached = 5;
+  string unit = 6;
+}
+
+enum EvidenceKind {
+  EVIDENCE_KIND_UNSPECIFIED = 0;
+  EVIDENCE_KIND_ORDER = 1;
+  EVIDENCE_KIND_REPLACE = 2;
+  EVIDENCE_KIND_CANCEL = 3;
+  EVIDENCE_KIND_TRADE = 4;
+}
+
+// EvidenceEvent is a market event that contributed to an alert.
+message EvidenceEvent {
+  int64 event_time_ns = 1;
+  uint64 seq = 2;
+  EvidenceKind kind = 3;
+  uint64 order_id = 4;
+  uint64 trade_id = 5;
+  string account_id = 6;
+  Side side = 7;
+  int64 price = 8;
+  int64 quantity = 9;
+  // Trades only: the account on the other side.
+  string counterparty_account_id = 10;
+  // Role the event plays in the pattern, for example "layer" or "genuine".
+  string role = 11;
+}
+
+// PricePoint is one sample of the symbol's market state, used to chart the
+// market around an incident.
+message PricePoint {
+  int64 event_time_ns = 1;
+  int64 last_price = 2;
+  int64 best_bid = 3;
+  int64 best_ask = 4;
+  int64 bid_size = 5;
+  int64 ask_size = 6;
+}
+
+message Evidence {
+  repeated uint64 order_ids = 1;
+  repeated uint64 trade_ids = 2;
+  repeated Feature features = 3;
+  // Contributing events in sequence order.
+  repeated EvidenceEvent timeline = 4;
+  repeated PricePoint price_context = 5;
+}
+
+// Alert is emitted by the detector on the `alerts` topic.
+message Alert {
+  // Deterministic idempotency key derived from the detector, symbol,
+  // accounts and the pattern's anchor event. Reprocessing the same events
+  // always yields the same key.
+  string alert_key = 1;
+  string session_id = 2;
+  AbuseType abuse_type = 3;
+  string detector = 4;
+  string rule_id = 5;
+  uint32 rule_version = 6;
+  // SHA-256 of the rule document that produced the alert.
+  string rule_digest = 7;
+  string taxonomy_code = 8;
+  Severity severity = 9;
+  // 0..100.
+  double score = 10;
+  string symbol = 11;
+  repeated string account_ids = 12;
+  repeated string beneficial_owner_ids = 13;
+  int64 window_start_ns = 14;
+  int64 window_end_ns = 15;
+  // Event time at which the rule fired.
+  int64 detected_at_ns = 16;
+  string explanation = 17;
+  Evidence evidence = 18;
+  // Wall-clock time the detector produced the alert.
+  int64 emitted_at_ns = 19;
+  // Wall-clock publish time of the event that triggered the alert, used to
+  // measure end-to-end latency.
+  int64 trigger_published_at_ns = 20;
+  uint64 trigger_seq = 21;
+  string detector_instance = 22;
+  string trace_id = 23;
+}
