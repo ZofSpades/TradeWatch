@@ -89,6 +89,9 @@ services:
       TW_SIM_SESSION_DURATION: 30m
       TW_SIM_CLOSING_WINDOW: 3m
       TW_SIM_RECORD_DIR: /recordings
+      # About one record in 2,000 is corrupted on purpose, so the dead-letter
+      # topic and sequence-gap handling are visible in the demo.
+      TW_SIM_MALFORMED_RATE: "0.0005"
       TW_HTTP_ADDR: ":8090"
     volumes:
       - recordings:/recordings
@@ -97,6 +100,21 @@ services:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "/usr/local/bin/marketsim", "healthcheck"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  ingest:
+    <<: *backend
+    command: ["ingest"]
+    environment:
+      TW_KAFKA_BROKERS: kafka:9092
+      TW_HTTP_ADDR: ":8091"
+    depends_on:
+      kafka:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "/usr/local/bin/ingest", "healthcheck"]
       interval: 5s
       timeout: 3s
       retries: 10
