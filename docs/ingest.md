@@ -75,10 +75,16 @@ releases records strictly in `seq` order:
   duplicates can be recognised.
 
 **Backpressure.** If a partition holds more than `TW_INGEST_MAX_HELD`
-records (20,000), the feeds that have already delivered records *beyond*
-the missing position are paused. The missing record cannot be on those
-feeds, so pausing them lets the others catch up without the buffer growing.
-They resume once the buffer has drained below half the limit.
+records (20,000), ingest pauses the feeds that have already delivered a
+record *beyond* the missing position of every blocked key. None of the
+missing records can be on those feeds, so pausing them lets the others catch
+up without the buffer growing. A paused feed resumes in two cases: the
+buffer drains below half the limit, or a newly blocked key might be waiting
+for a record on that feed. An earlier version checked only one blocked key
+per feed. With two symbols on a partition, it paused a feed that the other
+symbol still needed, and that symbol starved. The detector integration test
+found this deadlock, and `TestFeedNeededByAnyBlockedKeyIsNotPausable`
+reproduces it.
 
 The sequencer is pure logic, with no Kafka dependency. Its property test,
 `TestSequencerProperties`, generates random productions across symbols and

@@ -318,29 +318,27 @@ func (s *Sequencer) declareLost(key SeqKey, next uint64) {
 	s.release(key)
 }
 
-// AheadFeeds returns the feeds that have delivered records beyond the
-// position the most-blocked key is waiting for. The missing record cannot
-// be on those feeds, so pausing them lets the others catch up without the
-// held buffer growing.
-func (s *Sequencer) AheadFeeds() []Feed {
-	var worst SeqKey
-	most := 0
-	for k := range s.blocked {
-		if n := len(s.held[k]); n > most || (n == most && k.encode() < worst.encode()) {
-			worst, most = k, n
-		}
+// PausableFeeds reports, per feed, whether fetching from it can be paused
+// without starving a blocked key: a feed qualifies only if it has already
+// delivered a record beyond the missing position of every blocked key, so
+// that none of the missing records can be on it. Pausing such feeds lets
+// the others catch up without the held buffer growing; pausing any other
+// feed could deadlock a key waiting for that feed.
+func (s *Sequencer) PausableFeeds() [numFeeds]bool {
+	var ok [numFeeds]bool
+	if len(s.blocked) == 0 {
+		return ok
 	}
-	if most == 0 {
-		return nil
-	}
-	next := s.nextOf(worst)
-	var ahead []Feed
 	for f := range s.lastSeen {
-		if s.lastSeen[f][worst] > next {
-			ahead = append(ahead, Feed(f))
+		ok[f] = true
+		for k := range s.blocked {
+			if s.lastSeen[f][k] <= s.nextOf(k) {
+				ok[f] = false
+				break
+			}
 		}
 	}
-	return ahead
+	return ok
 }
 
 // ClosedEntry is a closed session remembered in a checkpoint.

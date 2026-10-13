@@ -252,13 +252,35 @@ func TestCheckpointRoundTripAndSizeLimit(t *testing.T) {
 	}
 }
 
-func TestAheadFeeds(t *testing.T) {
+func TestPausableFeeds(t *testing.T) {
 	h := newHarness()
 	h.deliver(FeedOrders, mkEvent(k1, 5, FeedOrders, false))
 	h.deliver(FeedBook, mkEvent(k1, 6, FeedBook, false))
-	ahead := h.s.AheadFeeds()
-	if len(ahead) != 2 || ahead[0] != FeedOrders || ahead[1] != FeedBook {
-		t.Errorf("ahead = %v, want orders and book_snapshots", ahead)
+	got := h.s.PausableFeeds()
+	want := [numFeeds]bool{FeedOrders: true, FeedBook: true}
+	if got != want {
+		t.Errorf("pausable = %v, want orders and book_snapshots", got)
+	}
+}
+
+// Found by the detector integration test: with two symbols on a partition,
+// a feed that is ahead for one blocked symbol can still hold the record the
+// other is waiting for. Pausing it starved that symbol forever.
+func TestFeedNeededByAnyBlockedKeyIsNotPausable(t *testing.T) {
+	h := newHarness()
+	k2 := SeqKey{"S1", "MOSS"}
+	// QZAP waits for seq 1 (a trade); orders and book are ahead for it.
+	h.deliver(FeedOrders, mkEvent(k1, 2, FeedOrders, false))
+	h.deliver(FeedBook, mkEvent(k1, 3, FeedBook, false))
+	// MOSS waits for seq 1 too, but has only been seen on the book feed;
+	// its missing record may still come on the orders feed.
+	h.deliver(FeedBook, mkEvent(k2, 2, FeedBook, false))
+	got := h.s.PausableFeeds()
+	if got[FeedOrders] {
+		t.Fatal("orders is still needed by MOSS and must not be paused")
+	}
+	if !got[FeedBook] {
+		t.Error("book_snapshots is ahead for every blocked key and can be paused")
 	}
 }
 

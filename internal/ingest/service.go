@@ -434,20 +434,28 @@ func (s *Service) caughtUp(ctx context.Context, p int32, g *group) bool {
 	return true
 }
 
+// backpressure pauses feeds while a partition holds too many records and
+// resumes them as soon as the buffer drains or any blocked key could need
+// them, so a pause can never starve the record a key is waiting for.
 func (s *Service) backpressure() {
 	for p, g := range s.groups {
 		held := g.seq.Held()
-		switch {
-		case held > s.cfg.MaxHeld:
-			for _, f := range g.seq.AheadFeeds() {
-				if !g.paused[f] {
-					s.cl.PauseFetchPartitions(map[string][]int32{s.topicOf(f): {p}})
-					g.paused[f] = true
-					s.log.Info("paused feed ahead of a missing sequence number", "feed", f, "partition", p, "held", held)
-				}
+		pausable := g.seq.PausableFeeds()
+		for f := range g.paused {
+			if !pausable[f] || held < s.cfg.MaxHeld/2 {
+				s.cl.ResumeFetchPartitions(map[string][]int32{s.topicOf(f): {p}})
+				delete(g.paused, f)
 			}
-		case held < s.cfg.MaxHeld/2 && len(g.paused) > 0:
-			s.resume(p, g)
+		}
+		if held <= s.cfg.MaxHeld {
+			continue
+		}
+		for f := Feed(0); f < numFeeds; f++ {
+			if pausable[f] && !g.paused[f] {
+				s.cl.PauseFetchPartitions(map[string][]int32{s.topicOf(f): {p}})
+				g.paused[f] = true
+				s.log.Info("paused a feed that is ahead of every missing sequence number", "feed", f, "partition", p, "held", held)
+			}
 		}
 	}
 }
