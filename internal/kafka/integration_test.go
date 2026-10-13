@@ -4,6 +4,7 @@ package kafka
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"strings"
 	"testing"
@@ -145,6 +146,71 @@ func TestSymbolKeysAreCoPartitioned(t *testing.T) {
 			if parts[sym] != want {
 				t.Errorf("%s: partition %d in %s but %d in %s", sym, parts[sym], topic, want, topics.Orders)
 			}
+		}
+	}
+}
+
+// TestCommitWithMetadataRoundTrip joins a consumer group, commits offsets
+// with custom metadata through the raw OffsetCommit path and reads them back
+// with kadm.
+func TestCommitWithMetadataRoundTrip(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	defer cancel()
+	prod, adm := newTestClient(t)
+
+	topics := NewTopics(testutil.UniquePrefix(t))
+	specs := topics.Specs(6)
+	deleteTopicsOnCleanup(t, adm, specs)
+	if err := EnsureTopics(ctx, adm, specs, 1); err != nil {
+		t.Fatal(err)
+	}
+	if err := prod.ProduceSync(ctx, &kgo.Record{Topic: topics.Orders, Key: []byte("QZAP"), Value: []byte("x")}).FirstErr(); err != nil {
+		t.Fatal(err)
+	}
+	ids, err := TopicIDs(ctx, adm, topics.Orders)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	group := "it-" + topics.Orders + "-group"
+	member, _ := newTestClient(t,
+		kgo.ConsumerGroup(group),
+		kgo.ConsumeTopics(topics.Orders),
+		kgo.DisableAutoCommit(),
+		kgo.ConsumeResetOffset(kgo.NewOffset().AtStart()),
+	)
+	if err := CommitWithMetadata(ctx, member, group, nil, ids); err != ErrNotInGroup {
+		t.Fatalf("commit before joining: %v, want ErrNotInGroup", err)
+	}
+	// Polling joins the group.
+	for {
+		member.PollFetches(ctx)
+		if ctx.Err() != nil {
+			t.Fatal("never joined the group")
+		}
+		if _, gen := member.GroupMetadata(); gen >= 0 {
+			break
+		}
+	}
+	offsets := map[string]map[int32]CommitOffset{topics.Orders: {}}
+	for p := int32(0); p < 6; p++ {
+		offsets[topics.Orders][p] = CommitOffset{Offset: int64(10 + p), Metadata: fmt.Sprintf(`{"v":1,"p":%d}`, p)}
+	}
+	if err := CommitWithMetadata(ctx, member, group, offsets, ids); err != nil {
+		t.Fatal(err)
+	}
+
+	got, err := adm.FetchOffsets(ctx, group)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for p := int32(0); p < 6; p++ {
+		o, ok := got.Lookup(topics.Orders, p)
+		if !ok || o.Err != nil {
+			t.Fatalf("partition %d: no committed offset (%v)", p, o.Err)
+		}
+		if o.At != int64(10+p) || o.Metadata != fmt.Sprintf(`{"v":1,"p":%d}`, p) {
+			t.Errorf("partition %d: committed %d %q", p, o.At, o.Metadata)
 		}
 	}
 }
