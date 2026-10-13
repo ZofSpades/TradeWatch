@@ -1,0 +1,57 @@
+#!/usr/bin/env bash
+# Mutation smoke test for the order book test suite. Applies hand-written
+# bugs to internal/orderbook one at a time and checks that
+# `go test ./internal/orderbook` fails for every one of them. The sources are
+# restored on exit, even when interrupted.
+#
+# Requires GNU sed; `make mutation-test` runs it inside the toolbox container.
+set -euo pipefail
+
+dir="internal/orderbook"
+backup="$(mktemp -d)"
+cp "$dir"/*.go "$backup"/
+restore() {
+	cp "$backup"/*.go "$dir"/
+	rm -rf "$backup"
+}
+trap restore EXIT
+
+total=0
+survived=0
+
+mutate() {
+	local file="$1" expr="$2" desc="$3"
+	total=$((total + 1))
+	sed -i -e "$expr" "$dir/$file"
+	if cmp -s "$dir/$file" "$backup/$file"; then
+		echo "mutation did not apply (source changed?): $desc" >&2
+		exit 2
+	fi
+	if go test "./$dir" -count=1 -rapid.nofailfile >/dev/null 2>&1; then
+		echo "SURVIVED  $desc"
+		survived=$((survived + 1))
+	else
+		echo "caught    $desc"
+	fi
+	cp "$backup/$file" "$dir/$file"
+}
+
+mutate book.go 's/TradeID: b.lastTradeID, Price: lvl.price,/TradeID: b.lastTradeID, Price: limit,/' \
+	"trade executes at the aggressor's limit instead of the resting price"
+mutate book.go 's/if newPrice == o.price \&\& newQty < o.qty {/if newPrice == o.price {/' \
+	"replace keeps time priority when increasing size"
+mutate book.go 's/if available >= qty {/if available > qty {/' \
+	"FOK liquidity check is off by one"
+mutate side.go 's/return s.better(s.levels\[i\].price, price) })/return !s.better(s.levels[i].price, price) })/' \
+	"price levels are inserted in inverted order"
+mutate book.go 's/fill := min(qty, r.qty)/fill := qty/' \
+	"a fill can exceed the resting order's quantity"
+mutate book.go 's/if lvl == nil || (typ == Limit \&\& !crosses(side, limit, lvl.price)) {/if lvl == nil {/' \
+	"limit orders trade through their limit"
+mutate side.go 's/^\tl.qty -= o.qty$/\t\/\/ aggregate not updated/' \
+	"level quantity is not reduced when an order leaves"
+
+echo "$((total - survived)) of $total mutations caught"
+if [ "$survived" -gt 0 ]; then
+	exit 1
+fi
