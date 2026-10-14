@@ -53,8 +53,18 @@ logs: ## Follow service logs
 ##@ Development
 
 .PHONY: test
-test: infra ## Run unit, race and integration tests (in Docker)
+test: infra ## Run the Go unit, race and integration tests and the dashboard tests (in Docker)
 	$(TOOLBOX) go test -race -tags=integration -count=1 ./...
+	$(MAKE) web-test
+
+WEBTOOLS := $(COMPOSE) run --rm --no-deps webtools
+
+.PHONY: web-test
+web-test: env ## Check, test and build the dashboard (in Docker)
+	$(WEBTOOLS) sh -c 'set -e; npm ci --no-audit --no-fund; \
+		npx openapi-typescript ../internal/api/openapi.yaml -o /tmp/schema.d.ts >/dev/null; \
+		cmp -s /tmp/schema.d.ts src/api/schema.d.ts || { echo "src/api/schema.d.ts is out of date: run npm run gen:api"; exit 1; }; \
+		npm run typecheck; npm test; npx vite build --outDir /tmp/dist --emptyOutDir'
 
 .PHONY: test-unit
 test-unit: ## Run unit tests with the local Go toolchain

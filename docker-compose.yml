@@ -206,6 +206,33 @@ services:
       timeout: 3s
       retries: 10
 
+  web:
+    build:
+      context: ./web
+    image: tradewatch/web:local
+    restart: unless-stopped
+    logging: *default-logging
+    ports:
+      - "127.0.0.1:3000:8080"
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8080/ >/dev/null || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # Node toolchain used by `make web-test`. node_modules lives in a volume so
+  # that the container's Linux packages never mix with a host install.
+  webtools:
+    image: node:24.19.0-alpine
+    profiles: ["tools"]
+    working_dir: /src/web
+    volumes:
+      - .:/src
+      - web-node-modules:/src/web/node_modules
+
   # Go toolchain used by `make test`, `make lint` and `make proto`, so that a
   # machine with only Docker can run them. Not started by `docker compose up`.
   toolbox:
@@ -231,3 +258,4 @@ volumes:
   go-mod-cache: {}
   go-build-cache: {}
   go-bin: {}
+  web-node-modules: {}
