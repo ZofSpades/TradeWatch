@@ -13,6 +13,28 @@ asserted.
 > **All market data in this repository is simulated.** Symbols, accounts and
 > prices are synthetic. Nothing here is compliance advice.
 
+## Results
+
+`make eval` simulates 25 seeded sessions (20 with injected abuse, 5
+without), runs the detectors exactly as the services do, and scores them
+against the ground truth. The table compares each production rule with a
+naive baseline that looks only at the most obvious signal. The full report
+has confidence intervals, time to detect, recall by scenario and threshold
+sweeps: [docs/results/eval](docs/results/eval/README.md).
+
+| Abuse type | Recall | Precision | Baseline recall | Baseline precision |
+| --- | ---: | ---: | ---: | ---: |
+| Wash trading | 0.93 | 0.92 | 0.63 | 0.13 |
+| Spoofing / layering | 0.80 | 1.00 | 0.86 | 0.01 |
+| Momentum ignition | 0.67 | 0.99 | 0.81 | 0.43 |
+| Quote stuffing | 0.93 | 1.00 | 0.93 | 1.00 |
+| Marking the close | 0.68 | 0.91 | 0.46 | 0.11 |
+
+These figures measure detection of the abuse TradeWatch injects into its own
+simulated market, not performance on a real venue.
+[detectors.md](docs/detectors.md#evaluation) explains what the comparison
+shows, including where the baseline does as well.
+
 ## Status
 
 The project is being built in phases. This table tracks what exists today.
@@ -26,7 +48,7 @@ The project is being built in phases. This table tracks what exists today.
 | 5 | Manipulation injector with ground truth | done |
 | 6 | `detector` framework, rule engine, five detectors | done |
 | 7 | `alertsink`, Postgres, `api` | done |
-| 8 | `evaluator` and first results | planned |
+| 8 | `evaluator` and first results | done |
 | 9 | Dashboard | planned |
 | 10 | Observability, benchmarks, chaos tests, profiling | planned |
 | 11 | Docs, polish, `make demo` | planned |
@@ -43,6 +65,8 @@ make test    # unit, race and integration tests, run inside Docker
 make lint    # gofmt, go vet, staticcheck
 make proto   # lint protobuf schemas and regenerate Go code
 make validate-rules # check the detection rules in rules/
+make eval    # measure detection quality; writes docs/results/eval
+make replay  # list session recordings; REC=<file> [COMPARE=<rules dir>] replays one offline
 make bench-micro    # Go micro-benchmarks, saved under docs/results/microbench
 make mutation-test  # check the order book tests catch injected engine bugs
 make help    # list all targets

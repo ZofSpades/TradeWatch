@@ -44,9 +44,15 @@ flowchart LR
     RD --> API
     API --> WEB[dashboard]
 
-    GT --> EVAL[evaluator]
-    PG --> EVAL
+    sim -->|session recordings| REC[(recordings)]
+    REC --> REPLAY[replay<br/>backtest rules]
 ```
+
+Two offline tools reuse the detection engine without Kafka. The evaluator
+simulates seeded sessions in-process and scores the rules against their
+ground truth ([detectors.md](detectors.md#evaluation)). The replay tool
+reruns detection over marketsim's recordings, which carry their reference
+data and labels.
 
 ## Services
 
@@ -74,7 +80,7 @@ default 6). See [ADR-0003](adr/0003-partitioning-and-ordering.md).
 | `book_snapshots` | symbol | `BookSnapshot` | marketsim | ingest | 1 day |
 | `market_events` | symbol | `MarketEvent` | ingest | detector | 1 day |
 | `refdata` | account / symbol / session | `RefDataRecord` | marketsim | ingest | compacted |
-| `groundtruth` | session | `GroundTruthLabel` | marketsim | evaluator only | 7 days |
+| `groundtruth` | session | `GroundTruthLabel` | marketsim | none yet (the evaluator and replay take labels from simulations and recordings) | 7 days |
 | `alerts` | alert key | `Alert` | detector | alertsink | 7 days |
 | `dlq` | source key | `DeadLetter` | ingest | operators | 7 days |
 | `rules_audit` | rule-set digest | `RuleSetSnapshot` | detector | alertsink | compacted |

@@ -7,9 +7,10 @@ each alert contains, and the false positives and blind spots that are known.
 
 All market data is simulated (see [simulator.md](simulator.md)). The abuse
 the detectors are tested against is injected by TradeWatch itself
-([manipulation.md](manipulation.md)). This document describes behaviour.
-Detection quality is a measurement against the ground truth, and is reported
-only with the evaluation results.
+([manipulation.md](manipulation.md)). Detection quality is measured against
+the simulator's ground truth by `make eval`; the results are summarized in
+[Evaluation](#evaluation) and reported in full in
+[docs/results/eval](results/eval/README.md).
 
 ## How detection runs
 
@@ -277,7 +278,7 @@ participants then chase, and the instigator trades out into it.
 | --- | --- | --- |
 | `impulse_window` | 60s | Span of the aggressive burst |
 | `min_impulse_orders` | 3 | Distinct aggressive orders in the burst |
-| `min_move_bps` | 30 | Move from the account's entry, in basis points |
+| `min_move_bps` | 20 | Move from the account's entry, in basis points. Version 2 lowered it from 30; see [Evaluation](#evaluation). |
 | `min_move_sigma` | 4 | Move relative to the volatility expected over the burst |
 | `volatility_lookback` | 30m | History used to estimate volatility |
 | `min_aggressive_share` | 0.4 | Account's share of aggressive volume in that direction |
@@ -295,8 +296,8 @@ Features: `impulse_orders`, `move_bps`, `move_sigma`, `aggressive_share`,
   within five minutes, such as a mistaken trade being unwound, matches the
   pattern.
 - Impulses that move the price less than `min_move_bps` are not reported.
-  How many injected episodes stay below that threshold is measured by the
-  evaluation, not here.
+  The evaluation's sweep of this threshold shows how recall falls as it
+  rises.
 - It also misses:
   - ignition split across several accounts, each below the share
     threshold;
@@ -401,6 +402,111 @@ threshold, or at `CLOSED`.
   cancellations) is out of scope.
 - It misses manipulation spread over the lookback before the closing phase,
   and manipulation done with passive orders.
+
+## Evaluation
+
+`make eval` runs `cmd/evaluator`, which works in three steps:
+
+1. **Simulate.** It simulates 20 sessions with injected abuse and 5
+   without, each 2 hours long with a 10-minute closing phase.
+2. **Detect.** It runs every event through the ingest stage and the
+   detection engine, as the services do.
+3. **Score.** It matches the alerts against the ground-truth labels.
+
+The run is deterministic. A native run and a run in Docker on another Go
+patch version produced byte-identical reports. The full report, with
+confidence intervals, time to detect, recall by scenario and the parameter
+sweeps, is [docs/results/eval](results/eval/README.md). The table below
+quotes it.
+
+| Abuse type | Episodes | Recall | Precision | False alerts per 100 symbol-hours without abuse | Baseline recall | Baseline precision | Baseline false alerts |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| wash_trading | 252 | 0.93 | 0.92 | 8.08 | 0.63 | 0.13 | 319.62 |
+| spoofing | 267 | 0.80 | 1.00 | 0.00 | 0.86 | 0.01 | 6236.54 |
+| momentum_ignition | 255 | 0.67 | 0.99 | 0.00 | 0.81 | 0.43 | 55.38 |
+| quote_stuffing | 264 | 0.93 | 1.00 | 0.00 | 0.93 | 1.00 | 0.00 |
+| marking_the_close | 85 | 0.68 | 0.91 | 0.00 | 0.46 | 0.11 | 83.08 |
+
+All market data and all abuse are simulated. These figures say how well the
+detectors find the patterns TradeWatch injects into its own synthetic
+market, not how they would perform on a real venue.
+
+What the comparison with the naive baselines shows:
+
+- **Wash trading.** Flagging every same-owner trade catches the direct
+  episodes as well as the production rule does (0.98 recall each). It finds
+  none of the 90 rings, which the production rule recovers at 0.83 recall.
+  It also flags every incidental cross between desks of one firm. The
+  production rule's false alerts on sessions without abuse come from such
+  crosses repeating at least three times within ten minutes; none of them
+  looked pre-arranged.
+- **Spoofing.** A high cancel ratio catches slightly more episodes (0.86
+  against 0.80), but market makers cancel constantly. It raises 21,730
+  alerts, at a precision of 0.01. Order size against the book, a fill on
+  the other side and cancel timing are what make the production rule
+  usable.
+- **Momentum ignition.** Aggressive trading into a move catches more
+  episodes, but with precision 0.43: momentum traders who join a move look
+  the same. The production rule's misses are mostly small impulses (see the
+  `min_move_bps` sweep in the report).
+- **Quote stuffing.** The baseline matches the production rule exactly,
+  because no normal participant in the simulator ever sends 100 messages a
+  second. The production rule's extra conditions are not exercised here. On
+  a venue with fast market makers they would be:
+  `TestBaselinesFlagWhatTheProductionRulesLeaveAlone` shows the baseline
+  flagging a busy account whose orders trade.
+- **Marking the close.** A large share of closing volume alone flags
+  execution algorithms finishing at the close. Requiring aggression,
+  direction, a price move and concentration in the closing phase gives
+  0.91 precision against 0.11.
+
+**Time to detect.**
+- **Immediate:** wash trading and quote stuffing (median 0 s), because the
+  alert fires on the completing trade or message.
+- **Spoofing:** 12 s.
+- **Momentum ignition:** 46 s, because the rule waits for the unwind.
+- **Marking the close:** 25 s.
+
+All are in simulated market time.
+
+**How a threshold was changed.** The parameter sweeps showed that
+`TW-MOMO-001` gained recall below 30 bps without losing precision or
+raising false alerts. Version 2 of the rule lowered `min_move_bps` to 20,
+not to the 10–15 bps the sweep would allow, to stay conservative about
+volatility the simulator may understate. The decision used three disjoint
+seed ranges:
+
+1. **Development:** the change was chosen on seeds 7000–7024.
+2. **Validation:** it was confirmed on seeds 9000–9024.
+3. **Test:** the figures above use seeds 1000–1024, which played no part.
+   On those seeds the change raised recall from 0.61 to 0.67, with
+   precision at 0.99 against 1.00.
+
+The sweeps suggest smaller gains elsewhere, such as a higher
+`min_volume_share` for marking the close. They were not adopted, to avoid
+tuning the rules to the simulator.
+
+**The baselines** are the rules in [`rules/baselines`](../rules/baselines),
+which the live detector never loads. Each looks only at the single most
+obvious signal of its abuse type: every same-owner trade, a high cancel
+ratio, aggressive trading into a move, a message rate, or a share of
+closing volume. Each uses the production rule's window, thresholds and
+suppression period where the signals overlap.
+
+### Backtesting a rule change
+
+marketsim records every session it publishes into the compose stack's
+`recordings` volume, including the reference data and the ground-truth
+labels. `make replay` lists the recordings. `make replay REC=<file>` reruns
+detection over one of them offline, exactly as the services would, and
+scores the alerts against the session's labels.
+
+With `COMPARE=<rules dir>`, it also replays the session under a second
+rules directory and lists, by alert key, the alerts only one of the two
+raises. That shows what a rule change would have added or removed on
+recorded history before the change is deployed. `TestReplayReproducesTheLiveAlerts`
+checks that a replay raises exactly the alerts of the live engine, and
+that a stricter threshold can only remove alerts.
 
 ## Sample explanations
 
