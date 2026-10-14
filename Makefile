@@ -79,8 +79,16 @@ test-unit: ## Run unit tests with the local Go toolchain
 	go test ./...
 
 .PHONY: lint
-lint: env ## Run gofmt, go vet and staticcheck (in Docker)
+lint: env ## Run gofmt, go vet and staticcheck, and check the monitoring configuration (in Docker)
 	$(TOOLBOX) sh -c 'test -z "$$(gofmt -l .)" || { gofmt -l .; exit 1; }; go vet ./... && go vet -tags=integration ./... && go run honnef.co/go/tools/cmd/staticcheck@$(STATICCHECK_VERSION) ./...'
+	$(MAKE) lint-monitoring
+
+PROMTOOL := $(COMPOSE) run --rm --no-deps --entrypoint promtool prometheus
+
+.PHONY: lint-monitoring
+lint-monitoring: env ## Check the Prometheus configuration and unit-test the alerting rules (in Docker)
+	$(PROMTOOL) check config /etc/prometheus/prometheus.yml
+	$(PROMTOOL) test rules /etc/prometheus/tests/tradewatch_test.yml
 
 .PHONY: validate-rules
 validate-rules: env ## Check the detection rules in rules/ the way the detector loads them

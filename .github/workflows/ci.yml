@@ -59,6 +59,14 @@ jobs:
         if: github.event_name == 'pull_request'
         run: buf breaking --against ".git#branch=origin/${{ github.base_ref }}"
 
+  monitoring:
+    name: Prometheus configuration and alerting rules
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: promtool check config and test rules
+        run: make lint-monitoring
+
   integration:
     name: Integration tests (docker compose)
     runs-on: ubuntu-latest

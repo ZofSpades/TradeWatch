@@ -1,0 +1,14 @@
+# Loads the dashboards in deploy/compose/grafana/dashboards. They are
+# provisioned from the repository, so changes made in the UI are not kept:
+# edit the JSON instead.
+apiVersion: 1
+
+providers:
+  - name: tradewatch
+    folder: TradeWatch
+    type: file
+    disableDeletion: true
+    allowUiUpdates: false
+    updateIntervalSeconds: 30
+    options:
+      path: /etc/grafana/dashboards

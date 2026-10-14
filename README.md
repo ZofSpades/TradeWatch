@@ -62,7 +62,7 @@ WSL2.
 make up      # build and start the stack; the dashboard is then on http://localhost:3000
 make infra   # start only Kafka (KRaft), Postgres and Redis
 make test    # Go unit, race and integration tests and the dashboard tests, in Docker
-make lint    # gofmt, go vet, staticcheck
+make lint    # gofmt, go vet, staticcheck, and the Prometheus config and rule tests
 make proto   # lint protobuf schemas and regenerate Go code
 make validate-rules # check the detection rules in rules/
 make eval    # measure detection quality; writes docs/results/eval
@@ -76,7 +76,9 @@ make help    # list all targets
 
 Once the stack is up, open the dashboard on `http://localhost:3000` and sign
 in as `analyst` or `admin`. `make env` generated their passwords into `.env`.
-The API itself listens on `http://localhost:8080`:
+Grafana's pipeline dashboards are on `http://localhost:3001` and Prometheus
+is on `http://localhost:9090`. The API itself listens on
+`http://localhost:8080`:
 
 ```sh
 PW=$(grep '^TW_API_ANALYST_PASSWORD=' .env | cut -d= -f2-)
@@ -97,4 +99,5 @@ curl -s localhost:8080/api/v1/stats -H "Authorization: Bearer $TOKEN" | jq
 - [Dashboard](docs/dashboard.md)
 - [API](docs/api.md)
 - [Delivery semantics, end to end](docs/delivery-semantics.md)
+- [Observability: metrics, dashboards, alerting rules, profiling](docs/observability.md)
 - [Architecture decision records](docs/adr/README.md)

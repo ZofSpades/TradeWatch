@@ -1,0 +1,14 @@
+# Grafana data sources for the compose stack, provisioned at start-up.
+apiVersion: 1
+
+datasources:
+  - name: Prometheus
+    uid: prometheus
+    type: prometheus
+    access: proxy
+    url: http://prometheus:9090
+    isDefault: true
+    editable: false
+    jsonData:
+      # Matches the scrape interval, so rate windows never come out empty.
+      timeInterval: 5s

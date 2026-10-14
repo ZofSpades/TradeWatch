@@ -1,0 +1,116 @@
+# Alerting rules for the TradeWatch pipeline. Prometheus evaluates them and
+# shows them under Alerts; the compose stack runs no Alertmanager, so they
+# notify nobody. tests/tradewatch_test.yml is their unit test
+# (`make lint-monitoring` runs it).
+groups:
+  - name: tradewatch-availability
+    rules:
+      - alert: TradeWatchServiceDown
+        expr: up{job=~"marketsim|ingest|detector|alertsink|api"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "{{ $labels.job }} at {{ $labels.instance }} is down"
+          description: "Prometheus could not scrape {{ $labels.job }} at {{ $labels.instance }} for a minute."
+
+  - name: tradewatch-pipeline
+    rules:
+      - alert: TradeWatchConsumerLagHigh
+        expr: |
+          sum by (job) (
+              tradewatch_ingest_consumer_lag_records
+            or tradewatch_detector_consumer_lag_records
+            or tradewatch_alertsink_consumer_lag_records
+          ) > 100000
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.job }} is {{ $value | humanize }} records behind"
+          description: "The {{ $labels.job }} consumer group has stayed more than 100,000 records behind its input for five minutes."
+
+      - alert: TradeWatchPipelineLatencyHigh
+        expr: |
+          histogram_quantile(0.99, sum by (le) (rate(tradewatch_alertsink_pipeline_latency_seconds_bucket[10m]))) > 5
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "p99 time from event to stored alert is {{ $value | humanizeDuration }}"
+          description: "The 99th percentile of the time from marketsim publishing an event to its alert being stored has stayed above 5 s."
+
+      - alert: TradeWatchOffsetCommitsFailing
+        expr: |
+          sum by (job) (
+              rate(tradewatch_ingest_commits_total{result="error"}[5m])
+            or rate(tradewatch_detector_commits_total{result="error"}[5m])
+            or rate(tradewatch_alertsink_commits_total{result="error"}[5m])
+          ) > 0
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.job }} is failing to commit offsets"
+          description: "Offset commits by {{ $labels.job }} have been failing for five minutes. Nothing is lost, but a restart will reprocess everything since the last successful commit."
+
+      - alert: TradeWatchProduceErrors
+        expr: increase(tradewatch_marketsim_produce_errors_total[5m]) > 0
+        labels:
+          severity: critical
+        annotations:
+          summary: "marketsim failed to deliver records to Kafka"
+          description: "The simulator's producer reported delivery failures; the session stops at the first one."
+
+  - name: tradewatch-data-quality
+    rules:
+      - alert: TradeWatchDeadLetterRateHigh
+        expr: |
+          sum(rate(tradewatch_ingest_dead_letters_total[5m]))
+            / sum(rate(tradewatch_ingest_records_total[5m])) > 0.01
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $value | humanizePercentage }} of raw records are dead-lettered"
+          description: "More than 1% of the raw records ingest consumed in the last five minutes were rejected."
+
+      # The compose stack corrupts records on purpose, and a record whose
+      # headers are destroyed cannot be placed in its sequence, so its gap
+      # counts as lost. The threshold sits well above that rate.
+      - alert: TradeWatchEventsLost
+        expr: |
+          sum(rate(tradewatch_ingest_sequence_gaps_total{reason="lost"}[15m]))
+            / sum(rate(tradewatch_ingest_events_released_total[15m])) > 0.001
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $value | humanizePercentage }} of events never reached ingest"
+          description: "More than 0.1% of the sequence numbers ingest released in the last 15 minutes were gaps for records that never arrived. The detectors saw the gaps; detection around them may be incomplete."
+
+      - alert: TradeWatchAlertDeadLettered
+        expr: increase(tradewatch_alertsink_dead_letters_total[15m]) > 0
+        labels:
+          severity: critical
+        annotations:
+          summary: "An alert could not be stored ({{ $labels.reason }})"
+          description: "The alert sink sent an alert or rule set to the dead-letter topic instead of storing it. It is missing from the analyst queue until it is replayed."
+
+  - name: tradewatch-operations
+    rules:
+      - alert: TradeWatchRuleReloadRejected
+        expr: increase(tradewatch_detector_rule_reloads_total{result="error"}[10m]) > 0
+        labels:
+          severity: warning
+        annotations:
+          summary: "A rule change was rejected"
+          description: "{{ $labels.instance }} refused to load the rules directory and keeps running the previous rules."
+
+      - alert: TradeWatchLiveViewsFailing
+        expr: increase(tradewatch_alertsink_live_errors_total[10m]) > 0
+        labels:
+          severity: warning
+        annotations:
+          summary: "The Redis live views are not being updated"
+          description: "The alert sink failed to update the live views. Postgres and the REST API are unaffected; the views are rebuilt once Redis recovers."

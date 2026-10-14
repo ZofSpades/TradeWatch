@@ -223,6 +223,62 @@ services:
       timeout: 3s
       retries: 10
 
+  # Scrapes every service's admin port (deploy/compose/prometheus) and
+  # evaluates the alerting rules. UI on http://localhost:9090.
+  prometheus:
+    image: prom/prometheus:v3.15.0
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.time=7d
+      - --storage.tsdb.retention.size=2GB
+    restart: unless-stopped
+    logging: *default-logging
+    ports:
+      - "127.0.0.1:9090:9090"
+    volumes:
+      - ./deploy/compose/prometheus:/etc/prometheus:ro
+      - prometheus-data:/prometheus
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:9090/-/ready"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  # Dashboards provisioned from deploy/compose/grafana, on
+  # http://localhost:3001. Anyone who can reach the port may view them;
+  # changing anything needs the admin password from .env.
+  grafana:
+    image: grafana/grafana:13.2.3
+    restart: unless-stopped
+    logging: *default-logging
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?GRAFANA_ADMIN_PASSWORD is not set - run `make env`}
+      GF_SERVER_ROOT_URL: http://localhost:3001/
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+      GF_ANALYTICS_CHECK_FOR_UPDATES: "false"
+      GF_ANALYTICS_CHECK_FOR_PLUGIN_UPDATES: "false"
+      GF_NEWS_NEWS_FEED_ENABLED: "false"
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /etc/grafana/dashboards/pipeline.json
+    ports:
+      - "127.0.0.1:3001:3000"
+    volumes:
+      - ./deploy/compose/grafana/provisioning/datasources:/etc/grafana/provisioning/datasources:ro
+      - ./deploy/compose/grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./deploy/compose/grafana/dashboards:/etc/grafana/dashboards:ro
+    depends_on:
+      prometheus:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3000/api/health >/dev/null || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+
   # Node toolchain used by `make web-test`. node_modules lives in a volume so
   # that the container's Linux packages never mix with a host install.
   webtools:
@@ -268,6 +324,7 @@ services:
 volumes:
   kafka-data: {}
   postgres-data: {}
+  prometheus-data: {}
   recordings: {}
   go-mod-cache: {}
   go-build-cache: {}

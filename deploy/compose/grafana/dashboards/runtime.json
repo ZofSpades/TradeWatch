@@ -1,0 +1,112 @@
+{
+  "uid": "tradewatch-runtime",
+  "title": "TradeWatch services: Go runtime",
+  "description": "CPU, memory, garbage collection and goroutines of every TradeWatch service instance.",
+  "tags": ["tradewatch"],
+  "timezone": "browser",
+  "editable": false,
+  "graphTooltip": 1,
+  "refresh": "10s",
+  "schemaVersion": 41,
+  "version": 1,
+  "time": { "from": "now-30m", "to": "now" },
+  "links": [
+    { "title": "TradeWatch dashboards", "type": "dashboards", "tags": ["tradewatch"], "asDropdown": false, "includeVars": false, "keepTime": true }
+  ],
+  "annotations": { "list": [] },
+  "templating": {
+    "list": [
+      {
+        "name": "job", "label": "Service", "type": "query",
+        "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "definition": "label_values(up{job=~\"marketsim|ingest|detector|alertsink|api\"}, job)",
+        "query": "label_values(up{job=~\"marketsim|ingest|detector|alertsink|api\"}, job)",
+        "refresh": 2, "sort": 1, "multi": true, "includeAll": true,
+        "current": { "selected": true, "text": ["All"], "value": ["$__all"] }
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1, "type": "stat", "title": "Instances up",
+      "description": "Instances Prometheus scraped successfully on its last attempt, by service.",
+      "gridPos": { "h": 4, "w": 24, "x": 0, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short", "decimals": 0, "color": { "mode": "thresholds" },
+          "thresholds": { "mode": "absolute", "steps": [ { "color": "red", "value": null }, { "color": "green", "value": 1 } ] }
+        },
+        "overrides": []
+      },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "colorMode": "background", "graphMode": "none", "justifyMode": "center", "textMode": "value_and_name", "orientation": "vertical" },
+      "targets": [ { "refId": "A", "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "sum by (job) (up{job=~\"$job\"})", "legendFormat": "{{job}}" } ]
+    },
+    {
+      "id": 2, "type": "timeseries", "title": "CPU, cores",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 4 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "short", "min": 0, "custom": { "lineWidth": 2, "fillOpacity": 0, "showPoints": "never", "spanNulls": true } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true }, "tooltip": { "mode": "multi", "sort": "desc" } },
+      "targets": [ { "refId": "A", "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "rate(process_cpu_seconds_total{job=~\"$job\"}[1m])", "legendFormat": "{{job}} {{instance}}" } ]
+    },
+    {
+      "id": 3, "type": "timeseries", "title": "Resident memory",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 4 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "bytes", "min": 0, "custom": { "lineWidth": 2, "fillOpacity": 0, "showPoints": "never", "spanNulls": true } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true }, "tooltip": { "mode": "multi", "sort": "desc" } },
+      "targets": [ { "refId": "A", "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "process_resident_memory_bytes{job=~\"$job\"}", "legendFormat": "{{job}} {{instance}}" } ]
+    },
+    {
+      "id": 4, "type": "timeseries", "title": "Heap in use",
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 12 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "bytes", "min": 0, "custom": { "lineWidth": 2, "fillOpacity": 0, "showPoints": "never", "spanNulls": true } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true }, "tooltip": { "mode": "multi", "sort": "desc" } },
+      "targets": [ { "refId": "A", "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "go_memstats_heap_inuse_bytes{job=~\"$job\"}", "legendFormat": "{{job}} {{instance}}" } ]
+    },
+    {
+      "id": 5, "type": "timeseries", "title": "Allocation rate",
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 12 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "Bps", "min": 0, "custom": { "lineWidth": 2, "fillOpacity": 0, "showPoints": "never", "spanNulls": true } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true }, "tooltip": { "mode": "multi", "sort": "desc" } },
+      "targets": [ { "refId": "A", "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "rate(go_memstats_alloc_bytes_total{job=~\"$job\"}[1m])", "legendFormat": "{{job}} {{instance}}" } ]
+    },
+    {
+      "id": 6, "type": "timeseries", "title": "Goroutines",
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 12 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "short", "min": 0, "decimals": 0, "custom": { "lineWidth": 2, "fillOpacity": 0, "showPoints": "never", "spanNulls": true } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true }, "tooltip": { "mode": "multi", "sort": "desc" } },
+      "targets": [ { "refId": "A", "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "go_goroutines{job=~\"$job\"}", "legendFormat": "{{job}} {{instance}}" } ]
+    },
+    {
+      "id": 7, "type": "timeseries", "title": "Garbage collections per second",
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 20 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "short", "min": 0, "custom": { "lineWidth": 2, "fillOpacity": 0, "showPoints": "never", "spanNulls": true } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true }, "tooltip": { "mode": "multi", "sort": "desc" } },
+      "targets": [ { "refId": "A", "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "rate(go_gc_duration_seconds_count{job=~\"$job\"}[1m])", "legendFormat": "{{job}} {{instance}}" } ]
+    },
+    {
+      "id": 8, "type": "timeseries", "title": "Longest recent GC pause",
+      "description": "The longest stop-the-world pause among the most recent garbage collections.",
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 20 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "s", "min": 0, "custom": { "lineWidth": 2, "fillOpacity": 0, "showPoints": "never", "spanNulls": true } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true }, "tooltip": { "mode": "multi", "sort": "desc" } },
+      "targets": [ { "refId": "A", "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "go_gc_duration_seconds{job=~\"$job\", quantile=~\"1|1.0\"}", "legendFormat": "{{job}} {{instance}}" } ]
+    },
+    {
+      "id": 9, "type": "timeseries", "title": "Open file descriptors",
+      "description": "Sockets and files each process holds open.",
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 20 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "short", "min": 0, "decimals": 0, "custom": { "lineWidth": 2, "fillOpacity": 0, "showPoints": "never", "spanNulls": true } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true }, "tooltip": { "mode": "multi", "sort": "desc" } },
+      "targets": [ { "refId": "A", "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "process_open_fds{job=~\"$job\"}", "legendFormat": "{{job}} {{instance}}" } ]
+    }
+  ]
+}

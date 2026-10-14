@@ -1,0 +1,162 @@
+# Unit tests of rules/tradewatch.yml, run by `promtool test rules`
+# (`make lint-monitoring`).
+rule_files:
+  - ../rules/tradewatch.yml
+
+evaluation_interval: 15s
+
+tests:
+  - name: a service that stops answering scrapes is reported after a minute
+    interval: 15s
+    input_series:
+      - series: 'up{job="detector", instance="10.0.0.5:8092"}'
+        values: "1 1 0 0 0 0 0 0"
+      - series: 'up{job="ingest", instance="10.0.0.6:8091"}'
+        values: "1 1 1 1 1 1 1 1"
+    alert_rule_test:
+      - eval_time: 30s
+        alertname: TradeWatchServiceDown
+        exp_alerts: []
+      - eval_time: 1m45s
+        alertname: TradeWatchServiceDown
+        exp_alerts:
+          - exp_labels:
+              severity: critical
+              job: detector
+              instance: 10.0.0.5:8092
+            exp_annotations:
+              summary: "detector at 10.0.0.5:8092 is down"
+              description: "Prometheus could not scrape detector at 10.0.0.5:8092 for a minute."
+
+  - name: lag is summed per consumer group and must last five minutes
+    interval: 1m
+    input_series:
+      - series: 'tradewatch_detector_consumer_lag_records{job="detector", instance="a:8092"}'
+        values: "60000x10"
+      - series: 'tradewatch_detector_consumer_lag_records{job="detector", instance="b:8092"}'
+        values: "50000x10"
+      - series: 'tradewatch_ingest_consumer_lag_records{job="ingest", instance="c:8091"}'
+        values: "90000x10"
+    alert_rule_test:
+      - eval_time: 3m
+        alertname: TradeWatchConsumerLagHigh
+        exp_alerts: []
+      - eval_time: 6m
+        alertname: TradeWatchConsumerLagHigh
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              job: detector
+            exp_annotations:
+              summary: "detector is 110k records behind"
+              description: "The detector consumer group has stayed more than 100,000 records behind its input for five minutes."
+
+  - name: the demo's deliberate corruption rate does not raise the dead-letter alert
+    interval: 1m
+    input_series:
+      # 2,000 records a minute, one in 2,000 rejected (the compose default).
+      - series: 'tradewatch_ingest_records_total{job="ingest", feed="orders", outcome="accepted"}'
+        values: "0+1999x20"
+      - series: 'tradewatch_ingest_dead_letters_total{job="ingest", reason="decode_error"}'
+        values: "0+1x20"
+    alert_rule_test:
+      - eval_time: 15m
+        alertname: TradeWatchDeadLetterRateHigh
+        exp_alerts: []
+
+  - name: a dead-letter rate above 1% is reported
+    interval: 1m
+    input_series:
+      - series: 'tradewatch_ingest_records_total{job="ingest", feed="orders", outcome="accepted"}'
+        values: "0+950x20"
+      - series: 'tradewatch_ingest_records_total{job="ingest", feed="orders", outcome="rejected"}'
+        values: "0+50x20"
+      - series: 'tradewatch_ingest_dead_letters_total{job="ingest", reason="invalid_field"}'
+        values: "0+50x20"
+    alert_rule_test:
+      - eval_time: 15m
+        alertname: TradeWatchDeadLetterRateHigh
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+            exp_annotations:
+              summary: "5% of raw records are dead-lettered"
+              description: "More than 1% of the raw records ingest consumed in the last five minutes were rejected."
+
+  - name: a single dead-lettered alert is critical
+    interval: 1m
+    input_series:
+      - series: 'tradewatch_alertsink_dead_letters_total{job="alertsink", instance="d:8093", reason="store_rejected"}'
+        values: "0 0 1 1 1"
+    alert_rule_test:
+      - eval_time: 1m
+        alertname: TradeWatchAlertDeadLettered
+        exp_alerts: []
+      - eval_time: 3m
+        alertname: TradeWatchAlertDeadLettered
+        exp_alerts:
+          - exp_labels:
+              severity: critical
+              job: alertsink
+              instance: d:8093
+              reason: store_rejected
+            exp_annotations:
+              summary: "An alert could not be stored (store_rejected)"
+              description: "The alert sink sent an alert or rule set to the dead-letter topic instead of storing it. It is missing from the analyst queue until it is replayed."
+
+  - name: end-to-end latency above 5 s at p99 is reported after ten minutes
+    interval: 1m
+    input_series:
+      # Every alert takes between 10 and 15 seconds.
+      - series: 'tradewatch_alertsink_pipeline_latency_seconds_bucket{job="alertsink", le="10"}'
+        values: "0x30"
+      - series: 'tradewatch_alertsink_pipeline_latency_seconds_bucket{job="alertsink", le="15"}'
+        values: "0+10x30"
+      - series: 'tradewatch_alertsink_pipeline_latency_seconds_bucket{job="alertsink", le="+Inf"}'
+        values: "0+10x30"
+    alert_rule_test:
+      - eval_time: 5m
+        alertname: TradeWatchPipelineLatencyHigh
+        exp_alerts: []
+      - eval_time: 15m
+        alertname: TradeWatchPipelineLatencyHigh
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+            exp_annotations:
+              summary: "p99 time from event to stored alert is 14.95s"
+              description: "The 99th percentile of the time from marketsim publishing an event to its alert being stored has stayed above 5 s."
+
+  - name: gaps from the demo's destroyed headers do not raise the lost-events alert
+    interval: 1m
+    input_series:
+      # 90,000 sequence numbers a minute, 12 of them lost (as at 1,500 events/s).
+      - series: 'tradewatch_ingest_events_released_total{job="ingest", kind="order"}'
+        values: "0+89988x30"
+      - series: 'tradewatch_ingest_events_released_total{job="ingest", kind="gap"}'
+        values: "0+12x30"
+      - series: 'tradewatch_ingest_sequence_gaps_total{job="ingest", reason="lost"}'
+        values: "0+12x30"
+    alert_rule_test:
+      - eval_time: 30m
+        alertname: TradeWatchEventsLost
+        exp_alerts: []
+
+  - name: losing one event in a hundred is reported
+    interval: 1m
+    input_series:
+      - series: 'tradewatch_ingest_events_released_total{job="ingest", kind="order"}'
+        values: "0+990x30"
+      - series: 'tradewatch_ingest_events_released_total{job="ingest", kind="gap"}'
+        values: "0+10x30"
+      - series: 'tradewatch_ingest_sequence_gaps_total{job="ingest", reason="lost"}'
+        values: "0+10x30"
+    alert_rule_test:
+      - eval_time: 30m
+        alertname: TradeWatchEventsLost
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+            exp_annotations:
+              summary: "1% of events never reached ingest"
+              description: "More than 0.1% of the sequence numbers ingest released in the last 15 minutes were gaps for records that never arrived. The detectors saw the gaps; detection around them may be incomplete."

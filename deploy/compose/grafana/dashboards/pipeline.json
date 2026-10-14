@@ -1,0 +1,334 @@
+{
+  "uid": "tradewatch-pipeline",
+  "title": "TradeWatch pipeline",
+  "description": "Throughput, latency, consumer lag and data quality of the surveillance pipeline, from marketsim to the API. All market data is simulated.",
+  "tags": ["tradewatch"],
+  "timezone": "browser",
+  "editable": false,
+  "graphTooltip": 1,
+  "refresh": "10s",
+  "schemaVersion": 41,
+  "version": 1,
+  "time": { "from": "now-30m", "to": "now" },
+  "links": [
+    { "title": "TradeWatch dashboards", "type": "dashboards", "tags": ["tradewatch"], "asDropdown": false, "includeVars": false, "keepTime": true }
+  ],
+  "annotations": { "list": [] },
+  "templating": { "list": [] },
+  "panels": [
+    { "id": 100, "type": "row", "title": "Overview", "collapsed": false, "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 }, "panels": [] },
+    {
+      "id": 1, "type": "stat", "title": "Published, events/s",
+      "description": "Market events marketsim handed to Kafka per second, over the last minute.",
+      "gridPos": { "h": 4, "w": 4, "x": 0, "y": 1 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "short", "color": { "mode": "fixed", "fixedColor": "blue" } }, "overrides": [] },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "colorMode": "value", "graphMode": "area", "justifyMode": "auto", "textMode": "value", "orientation": "auto" },
+      "targets": [ { "refId": "A", "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "sum(rate(tradewatch_marketsim_events_published_total[1m]))" } ]
+    },
+    {
+      "id": 2, "type": "stat", "title": "Processed, events/s",
+      "description": "Market events the detector instances ran through every detector per second, over the last minute.",
+      "gridPos": { "h": 4, "w": 4, "x": 4, "y": 1 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "short", "color": { "mode": "fixed", "fixedColor": "blue" } }, "overrides": [] },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "colorMode": "value", "graphMode": "area", "justifyMode": "auto", "textMode": "value", "orientation": "auto" },
+      "targets": [ { "refId": "A", "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "sum(rate(tradewatch_detector_events_total[1m]))" } ]
+    },
+    {
+      "id": 3, "type": "stat", "title": "Detector lag, records",
+      "description": "market_events records the detectors have not processed yet, summed over partitions.",
+      "gridPos": { "h": 4, "w": 4, "x": 8, "y": 1 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short", "decimals": 0, "color": { "mode": "thresholds" },
+          "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "orange", "value": 10000 }, { "color": "red", "value": 100000 } ] }
+        },
+        "overrides": []
+      },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "colorMode": "value", "graphMode": "area", "justifyMode": "auto", "textMode": "value", "orientation": "auto" },
+      "targets": [ { "refId": "A", "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "sum(tradewatch_detector_consumer_lag_records)" } ]
+    },
+    {
+      "id": 4, "type": "stat", "title": "Alert latency, p95",
+      "description": "95th percentile of the wall time from marketsim publishing the event that triggered an alert to the alert being stored in Postgres, over the last five minutes.",
+      "gridPos": { "h": 4, "w": 4, "x": 12, "y": 1 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s", "decimals": 2, "color": { "mode": "thresholds" }, "noValue": "no alerts yet",
+          "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "orange", "value": 1 }, { "color": "red", "value": 5 } ] }
+        },
+        "overrides": []
+      },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "colorMode": "value", "graphMode": "none", "justifyMode": "auto", "textMode": "value", "orientation": "auto" },
+      "targets": [ { "refId": "A", "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "histogram_quantile(0.95, sum by (le) (rate(tradewatch_alertsink_pipeline_latency_seconds_bucket[5m])))" } ]
+    },
+    {
+      "id": 5, "type": "stat", "title": "Alerts, last hour",
+      "description": "Alerts stored for the first time in the last hour. Redelivered duplicates are not counted.",
+      "gridPos": { "h": 4, "w": 4, "x": 16, "y": 1 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "short", "decimals": 0, "color": { "mode": "fixed", "fixedColor": "purple" } }, "overrides": [] },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "colorMode": "value", "graphMode": "none", "justifyMode": "auto", "textMode": "value", "orientation": "auto" },
+      "targets": [ { "refId": "A", "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "sum(increase(tradewatch_alertsink_alerts_raised_total[1h])) or vector(0)" } ]
+    },
+    {
+      "id": 6, "type": "stat", "title": "Dead letters, 1 h",
+      "description": "Records ingest and the alert sink sent to the dead-letter topic in the last hour. The compose stack corrupts about one raw record in 2,000 on purpose.",
+      "gridPos": { "h": 4, "w": 4, "x": 20, "y": 1 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "short", "decimals": 0, "color": { "mode": "fixed", "fixedColor": "orange" } }, "overrides": [] },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "colorMode": "value", "graphMode": "none", "justifyMode": "auto", "textMode": "value", "orientation": "auto" },
+      "targets": [ { "refId": "A", "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "(sum(increase(tradewatch_ingest_dead_letters_total[1h])) or vector(0)) + (sum(increase(tradewatch_alertsink_dead_letters_total[1h])) or vector(0))" } ]
+    },
+
+    { "id": 101, "type": "row", "title": "Throughput", "collapsed": false, "gridPos": { "h": 1, "w": 24, "x": 0, "y": 5 }, "panels": [] },
+    {
+      "id": 7, "type": "timeseries", "title": "Events per second at each stage",
+      "description": "Published by marketsim, released in sequence order by ingest, and processed by the detectors. The lines separate when a stage falls behind.",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 6 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "short", "min": 0, "custom": { "lineWidth": 2, "fillOpacity": 5, "showPoints": "never", "spanNulls": true, "axisLabel": "events/s" } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true }, "tooltip": { "mode": "multi", "sort": "desc" } },
+      "targets": [
+        { "refId": "A", "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "sum(rate(tradewatch_marketsim_events_published_total[1m]))", "legendFormat": "published by marketsim" },
+        { "refId": "B", "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "sum(rate(tradewatch_ingest_events_released_total[1m]))", "legendFormat": "released by ingest" },
+        { "refId": "C", "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "sum(rate(tradewatch_detector_events_total[1m]))", "legendFormat": "processed by detectors" }
+      ]
+    },
+    {
+      "id": 8, "type": "timeseries", "title": "Alerts stored per minute, by abuse type",
+      "description": "Alerts the sink stored for the first time, over five-minute windows.",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 6 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "short", "min": 0, "custom": { "lineWidth": 1, "fillOpacity": 40, "showPoints": "never", "spanNulls": true, "stacking": { "mode": "normal", "group": "A" }, "axisLabel": "alerts/min" } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true }, "tooltip": { "mode": "multi", "sort": "desc" } },
+      "targets": [
+        { "refId": "A", "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "sum by (abuse_type) (rate(tradewatch_alertsink_alerts_raised_total[5m])) * 60", "legendFormat": "{{abuse_type}}" }
+      ]
+    },
+
+    { "id": 102, "type": "row", "title": "Latency", "collapsed": false, "gridPos": { "h": 1, "w": 24, "x": 0, "y": 14 }, "panels": [] },
+    {
+      "id": 9, "type": "timeseries", "title": "Publish to ingest release",
+      "description": "Wall time from marketsim publishing an event to ingest releasing it to market_events, including any wait for an earlier sequence number.",
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 15 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "s", "min": 0, "custom": { "lineWidth": 2, "fillOpacity": 0, "showPoints": "never", "spanNulls": true } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true }, "tooltip": { "mode": "multi", "sort": "desc" } },
+      "targets": [
+        { "refId": "A", "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "histogram_quantile(0.5, sum by (le) (rate(tradewatch_ingest_event_latency_seconds_bucket[1m])))", "legendFormat": "p50" },
+        { "refId": "B", "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "histogram_quantile(0.95, sum by (le) (rate(tradewatch_ingest_event_latency_seconds_bucket[1m])))", "legendFormat": "p95" },
+        { "refId": "C", "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "histogram_quantile(0.99, sum by (le) (rate(tradewatch_ingest_event_latency_seconds_bucket[1m])))", "legendFormat": "p99" }
+      ]
+    },
+    {
+      "id": 10, "type": "timeseries", "title": "Publish to detector",
+      "description": "Wall time from marketsim publishing an event to a detector instance processing it.",
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 15 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "s", "min": 0, "custom": { "lineWidth": 2, "fillOpacity": 0, "showPoints": "never", "spanNulls": true } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true }, "tooltip": { "mode": "multi", "sort": "desc" } },
+      "targets": [
+        { "refId": "A", "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "histogram_quantile(0.5, sum by (le) (rate(tradewatch_detector_event_latency_seconds_bucket[1m])))", "legendFormat": "p50" },
+        { "refId": "B", "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "histogram_quantile(0.95, sum by (le) (rate(tradewatch_detector_event_latency_seconds_bucket[1m])))", "legendFormat": "p95" },
+        { "refId": "C", "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "histogram_quantile(0.99, sum by (le) (rate(tradewatch_detector_event_latency_seconds_bucket[1m])))", "legendFormat": "p99" }
+      ]
+    },
+    {
+      "id": 11, "type": "timeseries", "title": "Publish to stored alert",
+      "description": "Wall time from marketsim publishing the event that triggered an alert to the alert sink storing the alert in Postgres. Alerts are rare, so the window is five minutes.",
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 15 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "s", "min": 0, "custom": { "lineWidth": 2, "fillOpacity": 0, "showPoints": "never", "spanNulls": true } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true }, "tooltip": { "mode": "multi", "sort": "desc" } },
+      "targets": [
+        { "refId": "A", "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "histogram_quantile(0.5, sum by (le) (rate(tradewatch_alertsink_pipeline_latency_seconds_bucket[5m])))", "legendFormat": "p50" },
+        { "refId": "B", "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "histogram_quantile(0.95, sum by (le) (rate(tradewatch_alertsink_pipeline_latency_seconds_bucket[5m])))", "legendFormat": "p95" },
+        { "refId": "C", "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "histogram_quantile(0.99, sum by (le) (rate(tradewatch_alertsink_pipeline_latency_seconds_bucket[5m])))", "legendFormat": "p99" }
+      ]
+    },
+    {
+      "id": 12, "type": "timeseries", "title": "Detector time per event",
+      "description": "Time to run one event through every enabled detector, excluding Kafka.",
+      "gridPos": { "h": 7, "w": 12, "x": 0, "y": 23 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "s", "min": 0, "custom": { "lineWidth": 2, "fillOpacity": 0, "showPoints": "never", "spanNulls": true } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true }, "tooltip": { "mode": "multi", "sort": "desc" } },
+      "targets": [
+        { "refId": "A", "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "histogram_quantile(0.5, sum by (le) (rate(tradewatch_detector_process_seconds_bucket[1m])))", "legendFormat": "p50" },
+        { "refId": "B", "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "histogram_quantile(0.99, sum by (le) (rate(tradewatch_detector_process_seconds_bucket[1m])))", "legendFormat": "p99" }
+      ]
+    },
+    {
+      "id": 13, "type": "timeseries", "title": "Commit and store times, p99",
+      "description": "Flushing outputs and committing offsets in ingest and the detectors, and storing one alert batch in Postgres.",
+      "gridPos": { "h": 7, "w": 12, "x": 12, "y": 23 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "s", "min": 0, "custom": { "lineWidth": 2, "fillOpacity": 0, "showPoints": "never", "spanNulls": true } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true }, "tooltip": { "mode": "multi", "sort": "desc" } },
+      "targets": [
+        { "refId": "A", "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "histogram_quantile(0.99, sum by (le) (rate(tradewatch_ingest_commit_duration_seconds_bucket[5m])))", "legendFormat": "ingest commit" },
+        { "refId": "B", "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "histogram_quantile(0.99, sum by (le) (rate(tradewatch_detector_commit_duration_seconds_bucket[5m])))", "legendFormat": "detector commit" },
+        { "refId": "C", "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "histogram_quantile(0.99, sum by (le) (rate(tradewatch_alertsink_store_seconds_bucket[5m])))", "legendFormat": "alert batch store" }
+      ]
+    },
+
+    { "id": 103, "type": "row", "title": "Kafka consumers", "collapsed": false, "gridPos": { "h": 1, "w": 24, "x": 0, "y": 30 }, "panels": [] },
+    {
+      "id": 14, "type": "timeseries", "title": "Consumer lag",
+      "description": "Records between each consumer group's position and the end of its input, summed over the partitions it owns.",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 31 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "short", "min": 0, "custom": { "lineWidth": 2, "fillOpacity": 5, "showPoints": "never", "spanNulls": true, "axisLabel": "records" } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true }, "tooltip": { "mode": "multi", "sort": "desc" } },
+      "targets": [
+        { "refId": "A", "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "sum(tradewatch_ingest_consumer_lag_records)", "legendFormat": "ingest" },
+        { "refId": "B", "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "tradewatch_detector_consumer_lag_records", "legendFormat": "detector {{instance}}" },
+        { "refId": "C", "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "sum(tradewatch_alertsink_consumer_lag_records)", "legendFormat": "alertsink" }
+      ]
+    },
+    {
+      "id": 15, "type": "timeseries", "title": "Partitions owned",
+      "description": "Partitions each instance owns. A rebalance shows as a step.",
+      "gridPos": { "h": 8, "w": 6, "x": 12, "y": 31 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "short", "min": 0, "decimals": 0, "custom": { "lineWidth": 2, "fillOpacity": 0, "showPoints": "never", "spanNulls": true, "lineInterpolation": "stepAfter" } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true }, "tooltip": { "mode": "multi", "sort": "desc" } },
+      "targets": [
+        { "refId": "A", "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "tradewatch_ingest_assigned_partitions", "legendFormat": "ingest {{instance}}" },
+        { "refId": "B", "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "tradewatch_detector_assigned_partitions", "legendFormat": "detector {{instance}}" }
+      ]
+    },
+    {
+      "id": 16, "type": "timeseries", "title": "Offset commits per second",
+      "description": "Offset commits by result. Offsets are committed only after the outputs they cover are durably written.",
+      "gridPos": { "h": 8, "w": 6, "x": 18, "y": 31 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "short", "min": 0, "custom": { "lineWidth": 2, "fillOpacity": 0, "showPoints": "never", "spanNulls": true } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true }, "tooltip": { "mode": "multi", "sort": "desc" } },
+      "targets": [
+        { "refId": "A", "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "sum by (job, result) (rate(tradewatch_ingest_commits_total[1m]) or rate(tradewatch_detector_commits_total[1m]) or rate(tradewatch_alertsink_commits_total[1m]))", "legendFormat": "{{job}} {{result}}" }
+      ]
+    },
+
+    { "id": 104, "type": "row", "title": "Data quality and recovery", "collapsed": false, "gridPos": { "h": 1, "w": 24, "x": 0, "y": 39 }, "panels": [] },
+    {
+      "id": 17, "type": "timeseries", "title": "Dead letters per minute, by reason",
+      "description": "Records sent to the dead-letter topic, by stage and reason.",
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 40 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "short", "min": 0, "custom": { "lineWidth": 1, "fillOpacity": 40, "showPoints": "never", "spanNulls": true, "stacking": { "mode": "normal", "group": "A" } } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true }, "tooltip": { "mode": "multi", "sort": "desc" } },
+      "targets": [
+        { "refId": "A", "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "sum by (job, reason) (rate(tradewatch_ingest_dead_letters_total[5m]) or rate(tradewatch_alertsink_dead_letters_total[5m])) * 60", "legendFormat": "{{job}}: {{reason}}" }
+      ]
+    },
+    {
+      "id": 18, "type": "timeseries", "title": "Sequence gaps marked per minute",
+      "description": "Gap markers ingest released in place of a missing sequence number: dead_letter when the record was rejected, lost when it never arrived.",
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 40 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "short", "min": 0, "custom": { "lineWidth": 2, "fillOpacity": 0, "showPoints": "never", "spanNulls": true } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true }, "tooltip": { "mode": "multi", "sort": "desc" } },
+      "targets": [
+        { "refId": "A", "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "sum by (reason) (rate(tradewatch_ingest_sequence_gaps_total[5m])) * 60", "legendFormat": "{{reason}}" }
+      ]
+    },
+    {
+      "id": 19, "type": "timeseries", "title": "Duplicates absorbed per minute",
+      "description": "Copies dropped by each stage's deduplication: raw records by ingest (session, symbol, sequence), market events by the detectors, and alert deliveries by the sink's alert key.",
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 40 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "short", "min": 0, "custom": { "lineWidth": 2, "fillOpacity": 0, "showPoints": "never", "spanNulls": true } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true }, "tooltip": { "mode": "multi", "sort": "desc" } },
+      "targets": [
+        { "refId": "A", "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "sum(rate(tradewatch_ingest_duplicates_total[5m])) * 60", "legendFormat": "raw records (ingest)" },
+        { "refId": "B", "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "sum(rate(tradewatch_detector_duplicate_events_total[5m])) * 60", "legendFormat": "market events (detectors)" },
+        { "refId": "C", "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "sum(rate(tradewatch_alertsink_alert_duplicates_total[5m])) * 60", "legendFormat": "alert deliveries (alertsink)" }
+      ]
+    },
+    {
+      "id": 20, "type": "timeseries", "title": "Ingest sequencer",
+      "description": "Records held back waiting for an earlier sequence number, and feeds paused because too many are held.",
+      "gridPos": { "h": 7, "w": 8, "x": 0, "y": 48 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": { "unit": "short", "min": 0, "custom": { "lineWidth": 2, "fillOpacity": 0, "showPoints": "never", "spanNulls": true } },
+        "overrides": [ { "matcher": { "id": "byName", "options": "feeds paused" }, "properties": [ { "id": "custom.axisPlacement", "value": "right" }, { "id": "decimals", "value": 0 } ] } ]
+      },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true }, "tooltip": { "mode": "multi", "sort": "desc" } },
+      "targets": [
+        { "refId": "A", "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "sum(tradewatch_ingest_held_records)", "legendFormat": "records held" },
+        { "refId": "B", "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "sum(tradewatch_ingest_paused_feeds)", "legendFormat": "feeds paused" }
+      ]
+    },
+    {
+      "id": 21, "type": "timeseries", "title": "Detector state",
+      "description": "Open (session, symbol) states across the detector instances, and orders forgotten per minute because of the order memory bound.",
+      "gridPos": { "h": 7, "w": 8, "x": 8, "y": 48 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": { "unit": "short", "min": 0, "custom": { "lineWidth": 2, "fillOpacity": 0, "showPoints": "never", "spanNulls": true } },
+        "overrides": [ { "matcher": { "id": "byName", "options": "orders evicted/min" }, "properties": [ { "id": "custom.axisPlacement", "value": "right" } ] } ]
+      },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true }, "tooltip": { "mode": "multi", "sort": "desc" } },
+      "targets": [
+        { "refId": "A", "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "sum(tradewatch_detector_open_symbols)", "legendFormat": "open symbol states" },
+        { "refId": "B", "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "sum(rate(tradewatch_detector_orders_evicted_total[5m])) * 60", "legendFormat": "orders evicted/min" }
+      ]
+    },
+    {
+      "id": 22, "type": "timeseries", "title": "Handover replays and suppression per minute",
+      "description": "Alerts regenerated while a detector rebuilt state after a handover (not produced again), repeat detections silenced by a rule's suppression period, and events older than their symbol's watermark.",
+      "gridPos": { "h": 7, "w": 8, "x": 16, "y": 48 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "short", "min": 0, "custom": { "lineWidth": 2, "fillOpacity": 0, "showPoints": "never", "spanNulls": true } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true }, "tooltip": { "mode": "multi", "sort": "desc" } },
+      "targets": [
+        { "refId": "A", "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "sum(rate(tradewatch_detector_replayed_alerts_total[5m])) * 60", "legendFormat": "replayed alerts" },
+        { "refId": "B", "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "sum(rate(tradewatch_detector_suppressed_alerts_total[5m])) * 60", "legendFormat": "suppressed repeats" },
+        { "refId": "C", "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "sum(rate(tradewatch_detector_late_events_total[5m])) * 60", "legendFormat": "late events" }
+      ]
+    },
+
+    { "id": 105, "type": "row", "title": "API", "collapsed": false, "gridPos": { "h": 1, "w": 24, "x": 0, "y": 55 }, "panels": [] },
+    {
+      "id": 23, "type": "timeseries", "title": "Requests per second, by route",
+      "gridPos": { "h": 8, "w": 10, "x": 0, "y": 56 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "short", "min": 0, "custom": { "lineWidth": 2, "fillOpacity": 0, "showPoints": "never", "spanNulls": true } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true }, "tooltip": { "mode": "multi", "sort": "desc" } },
+      "targets": [
+        { "refId": "A", "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "sum by (route) (rate(tradewatch_api_requests_total[1m]))", "legendFormat": "{{route}}" }
+      ]
+    },
+    {
+      "id": 24, "type": "timeseries", "title": "Request latency p95, by route",
+      "description": "Event streams are excluded: they last as long as the client stays connected.",
+      "gridPos": { "h": 8, "w": 7, "x": 10, "y": 56 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "s", "min": 0, "custom": { "lineWidth": 2, "fillOpacity": 0, "showPoints": "never", "spanNulls": true } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true }, "tooltip": { "mode": "multi", "sort": "desc" } },
+      "targets": [
+        { "refId": "A", "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "histogram_quantile(0.95, sum by (le, route) (rate(tradewatch_api_request_duration_seconds_bucket[5m])))", "legendFormat": "{{route}}" }
+      ]
+    },
+    {
+      "id": 25, "type": "timeseries", "title": "Live feed clients and server errors",
+      "gridPos": { "h": 8, "w": 7, "x": 17, "y": 56 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": { "unit": "short", "min": 0, "custom": { "lineWidth": 2, "fillOpacity": 0, "showPoints": "never", "spanNulls": true } },
+        "overrides": [ { "matcher": { "id": "byName", "options": "5xx responses/min" }, "properties": [ { "id": "custom.axisPlacement", "value": "right" }, { "id": "color", "value": { "mode": "fixed", "fixedColor": "red" } } ] } ]
+      },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true }, "tooltip": { "mode": "multi", "sort": "desc" } },
+      "targets": [
+        { "refId": "A", "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "sum(tradewatch_api_stream_clients)", "legendFormat": "live feed clients" },
+        { "refId": "B", "datasource": { "type": "prometheus", "uid": "prometheus" }, "expr": "sum(rate(tradewatch_api_requests_total{code=~\"5..\"}[5m])) * 60 or vector(0)", "legendFormat": "5xx responses/min" }
+      ]
+    }
+  ]
+}
