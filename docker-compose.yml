@@ -126,6 +126,28 @@ services:
       timeout: 3s
       retries: 10
 
+  detector:
+    <<: *backend
+    command: ["detector"]
+    # Two instances share the market_events partitions through the consumer
+    # group; scale further with `docker compose up --scale detector=N`.
+    deploy:
+      replicas: 2
+    environment:
+      TW_KAFKA_BROKERS: kafka:9092
+      TW_DETECTOR_RULES_DIR: /etc/tradewatch/rules
+      TW_HTTP_ADDR: ":8092"
+    volumes:
+      - ./rules:/etc/tradewatch/rules:ro
+    depends_on:
+      kafka:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "/usr/local/bin/detector", "healthcheck"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
   # Go toolchain used by `make test`, `make lint` and `make proto`, so that a
   # machine with only Docker can run them. Not started by `docker compose up`.
   toolbox:

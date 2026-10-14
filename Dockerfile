@@ -16,4 +16,7 @@ COPY --from=build /out/bin/ /usr/local/bin/
 # Mount point for session recordings, owned by the runtime user so a fresh
 # named volume inherits writable ownership.
 COPY --from=build --chown=65532:65532 /out/recordings /recordings
+# Default rule pack; compose bind-mounts ./rules over it so edits hot-reload.
+COPY rules /etc/tradewatch/rules
+ENV TW_DETECTOR_RULES_DIR=/etc/tradewatch/rules
 USER nonroot:nonroot

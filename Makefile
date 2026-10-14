@@ -64,6 +64,10 @@ test-unit: ## Run unit tests with the local Go toolchain
 lint: env ## Run gofmt, go vet and staticcheck (in Docker)
 	$(TOOLBOX) sh -c 'test -z "$$(gofmt -l .)" || { gofmt -l .; exit 1; }; go vet ./... && go vet -tags=integration ./... && go run honnef.co/go/tools/cmd/staticcheck@$(STATICCHECK_VERSION) ./...'
 
+.PHONY: validate-rules
+validate-rules: env ## Check the detection rules in rules/ the way the detector loads them
+	$(TOOLBOX) go run ./cmd/detector validate-rules rules
+
 .PHONY: bench-micro
 bench-micro: env ## Run Go micro-benchmarks and save results to docs/results/microbench
 	$(TOOLBOX) bash scripts/bench-micro.sh orderbook ./internal/orderbook
