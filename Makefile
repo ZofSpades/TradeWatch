@@ -110,6 +110,16 @@ replay: env ## Rerun detection over a recording: make replay REC=<file> [COMPARE
 			go run ./cmd/replay -rules rules $(if $(COMPARE),-compare $(COMPARE)) /recordings/$(REC); \
 	fi
 
+BENCH_COMPOSE := $(COMPOSE) -f docker-compose.yml -f deploy/compose/bench.yml
+
+.PHONY: bench
+bench: up ## Load-test the pipeline at increasing event rates and write docs/results/bench (about 15 minutes)
+	TW_BENCH_RUN=$$(date -u +%Y%m%dT%H%M%SZ) $(BENCH_COMPOSE) up -d --no-deps --force-recreate --wait marketsim
+	status=0; $(TOOLBOX) go run ./cmd/bench \
+		-docker "$$(docker info --format '{{.ServerVersion}} on {{.OperatingSystem}}' 2>/dev/null || true)" \
+		-commit "$$(git -c safe.directory="$$PWD" rev-parse --short HEAD 2>/dev/null || true)" $(BENCH_FLAGS) || status=$$?; \
+	$(COMPOSE) up -d --no-deps --force-recreate --wait marketsim; exit $$status
+
 .PHONY: bench-micro
 bench-micro: env ## Run Go micro-benchmarks and save results to docs/results/microbench
 	$(TOOLBOX) bash scripts/bench-micro.sh orderbook ./internal/orderbook

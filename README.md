@@ -69,6 +69,7 @@ make eval    # measure detection quality; writes docs/results/eval
 make replay  # list session recordings; REC=<file> [COMPARE=<rules dir>] replays one offline
 make web-test       # dashboard type-check, tests and build (also part of make test)
 make web-e2e        # drive the running dashboard in a real browser (changes data)
+make bench          # load-test the pipeline at rising event rates; writes docs/results/bench
 make bench-micro    # Go micro-benchmarks, saved under docs/results/microbench
 make mutation-test  # check the order book tests catch injected engine bugs
 make help    # list all targets

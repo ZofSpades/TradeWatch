@@ -1,0 +1,26 @@
+# Compose override used by `make bench`. marketsim publishes at a fixed rate,
+# which the benchmark raises step by step, in one long session, and records
+# nothing, so that the load generator spends its CPU on publishing. Every
+# other service runs exactly as `make up` starts it.
+services:
+  marketsim:
+    environment:
+      TW_SIM_PACE: rate
+      TW_SIM_RATE: "1000"
+      # Simulated time runs far faster than wall time at these rates; the
+      # session is long enough that no step reaches the close.
+      TW_SIM_SESSION_DURATION: 5000h
+      # A fresh prefix per run, so that a rerun's alerts, whose keys depend
+      # on the session, are stored anew instead of being taken for
+      # duplicates of the previous run's.
+      TW_SIM_SESSION_PREFIX: bench-${TW_BENCH_RUN:?run make bench}
+      TW_SIM_RECORD_DIR: ""
+      # Abuse is injected ten times as often as in the demo, so that every
+      # step stores enough alerts to measure their latency. That also gives
+      # the detectors more work than the demo does. (The session never
+      # reaches its close, so no close is marked.)
+      TW_SIM_INJECT_WASH_TRADING: "6"
+      TW_SIM_INJECT_SPOOFING: "6"
+      TW_SIM_INJECT_MOMENTUM_IGNITION: "4"
+      TW_SIM_INJECT_QUOTE_STUFFING: "6"
+      TW_SIM_INJECT_MARKING_THE_CLOSE: "0.25"
