@@ -8,3 +8,4 @@
 
 *.pb.go linguist-generated=true
 web/package-lock.json linguist-generated=true
+web/src/api/schema.d.ts linguist-generated=true
