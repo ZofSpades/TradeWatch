@@ -81,5 +81,7 @@ is sent as a raw `kmsg.OffsetCommitRequest` (ADR-0001).
   or once it has been idle for `TW_INGEST_IDLE_AFTER` without closing, so
   sessions abandoned by a marketsim restart do not accumulate (see
   [ingest.md](../ingest.md)).
+- The detector uses the same mechanism with a different checkpoint
+  ([ADR-0005](0005-detector-state-by-replay.md)).
 - Standard lag tooling keeps working, because committed offsets track real
   progress.

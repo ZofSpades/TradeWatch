@@ -24,7 +24,7 @@ The project is being built in phases. This table tracks what exists today.
 | 3 | `marketsim` normal participants | done |
 | 4 | `ingest` validation, enrichment, DLQ | done |
 | 5 | Manipulation injector with ground truth | done |
-| 6 | `detector` framework, rule engine, five detectors | planned |
+| 6 | `detector` framework, rule engine, five detectors | done |
 | 7 | `alertsink`, Postgres, `api` | planned |
 | 8 | `evaluator` and first results | planned |
 | 9 | Dashboard | planned |
@@ -37,11 +37,12 @@ Requirements: Docker with the compose plugin, and GNU make. On Windows, use
 WSL2.
 
 ```sh
-make up      # build and start the stack (Kafka, Postgres, Redis, marketsim, ingest)
+make up      # build and start the stack (Kafka, Postgres, Redis, marketsim, ingest, detector)
 make infra   # start only Kafka (KRaft), Postgres and Redis
 make test    # unit, race and integration tests, run inside Docker
 make lint    # gofmt, go vet, staticcheck
 make proto   # lint protobuf schemas and regenerate Go code
+make validate-rules # check the detection rules in rules/
 make bench-micro    # Go micro-benchmarks, saved under docs/results/microbench
 make mutation-test  # check the order book tests catch injected engine bugs
 make help    # list all targets
@@ -54,4 +55,5 @@ make help    # list all targets
 - [Market simulator](docs/simulator.md)
 - [Injected abuse and ground truth](docs/manipulation.md)
 - [Ingest](docs/ingest.md)
+- [Detectors and rules](docs/detectors.md)
 - [Architecture decision records](docs/adr/README.md)
