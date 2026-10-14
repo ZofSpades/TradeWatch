@@ -1,0 +1,23 @@
+apiVersion: tradewatch/v1
+kind: DetectionRule
+metadata:
+  id: TW-BASECLOSE-001
+  version: 1
+  name: "Baseline: large share of closing volume"
+  detector: baseline_close_volume
+  taxonomy: MAR-CLOSE
+  severity: low
+  owner: surveillance-engineering
+  description: >-
+    Evaluation baseline for TW-CLOSE-001. Flags an account with a large share
+    of the volume traded in the closing phase, without looking at direction,
+    aggressiveness, the price move or where the account's trading was
+    concentrated.
+spec:
+  enabled: true
+  suppress_for: 1h
+  params:
+    min_volume_share: 0.15
+  explanation: >-
+    Account {{index .Accounts 0}} traded {{pct .F.volume_share}} of the volume
+    of {{.Symbol}} in the closing phase.

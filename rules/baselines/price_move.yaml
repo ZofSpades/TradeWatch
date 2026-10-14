@@ -1,0 +1,26 @@
+apiVersion: tradewatch/v1
+kind: DetectionRule
+metadata:
+  id: TW-BASEMOMO-001
+  version: 1
+  name: "Baseline: aggressive trading into a price move"
+  detector: baseline_price_move
+  taxonomy: MAR-MOMENTUM
+  severity: low
+  owner: surveillance-engineering
+  description: >-
+    Evaluation baseline for TW-MOMO-001. Flags an account sending several
+    aggressive orders in one direction while the price moves that way,
+    without measuring the move from the account's own entry, comparing it
+    with volatility, or requiring the position to be unwound.
+spec:
+  enabled: true
+  suppress_for: 15m
+  params:
+    window: 60s
+    min_orders: 3
+    min_move_bps: 30
+  explanation: >-
+    Account {{index .Accounts 0}} sent {{int .F.aggressive_orders}} aggressive
+    {{.Facts.direction}} orders in {{.Symbol}} while the price moved
+    {{bps .F.move_bps}} its way.

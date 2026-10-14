@@ -50,7 +50,12 @@
             "spoofing",
             "momentum_ignition",
             "quote_stuffing",
-            "marking_the_close"
+            "marking_the_close",
+            "baseline_self_trade",
+            "baseline_cancel_ratio",
+            "baseline_price_move",
+            "baseline_message_rate",
+            "baseline_close_volume"
           ]
         },
         "taxonomy": {
@@ -120,6 +125,21 @@
     },
     {
       "$ref": "#/$defs/params_for/marking_the_close"
+    },
+    {
+      "$ref": "#/$defs/params_for/baseline_self_trade"
+    },
+    {
+      "$ref": "#/$defs/params_for/baseline_cancel_ratio"
+    },
+    {
+      "$ref": "#/$defs/params_for/baseline_price_move"
+    },
+    {
+      "$ref": "#/$defs/params_for/baseline_message_rate"
+    },
+    {
+      "$ref": "#/$defs/params_for/baseline_close_volume"
     }
   ],
   "$defs": {
@@ -255,6 +275,126 @@
               "properties": {
                 "params": {
                   "$ref": "#/$defs/marking_the_close"
+                }
+              }
+            }
+          }
+        }
+      },
+      "baseline_self_trade": {
+        "if": {
+          "properties": {
+            "metadata": {
+              "properties": {
+                "detector": {
+                  "const": "baseline_self_trade"
+                }
+              }
+            }
+          }
+        },
+        "then": {
+          "properties": {
+            "spec": {
+              "properties": {
+                "params": {
+                  "$ref": "#/$defs/baseline_self_trade"
+                }
+              }
+            }
+          }
+        }
+      },
+      "baseline_cancel_ratio": {
+        "if": {
+          "properties": {
+            "metadata": {
+              "properties": {
+                "detector": {
+                  "const": "baseline_cancel_ratio"
+                }
+              }
+            }
+          }
+        },
+        "then": {
+          "properties": {
+            "spec": {
+              "properties": {
+                "params": {
+                  "$ref": "#/$defs/baseline_cancel_ratio"
+                }
+              }
+            }
+          }
+        }
+      },
+      "baseline_price_move": {
+        "if": {
+          "properties": {
+            "metadata": {
+              "properties": {
+                "detector": {
+                  "const": "baseline_price_move"
+                }
+              }
+            }
+          }
+        },
+        "then": {
+          "properties": {
+            "spec": {
+              "properties": {
+                "params": {
+                  "$ref": "#/$defs/baseline_price_move"
+                }
+              }
+            }
+          }
+        }
+      },
+      "baseline_message_rate": {
+        "if": {
+          "properties": {
+            "metadata": {
+              "properties": {
+                "detector": {
+                  "const": "baseline_message_rate"
+                }
+              }
+            }
+          }
+        },
+        "then": {
+          "properties": {
+            "spec": {
+              "properties": {
+                "params": {
+                  "$ref": "#/$defs/baseline_message_rate"
+                }
+              }
+            }
+          }
+        }
+      },
+      "baseline_close_volume": {
+        "if": {
+          "properties": {
+            "metadata": {
+              "properties": {
+                "detector": {
+                  "const": "baseline_close_volume"
+                }
+              }
+            }
+          }
+        },
+        "then": {
+          "properties": {
+            "spec": {
+              "properties": {
+                "params": {
+                  "$ref": "#/$defs/baseline_close_volume"
                 }
               }
             }
@@ -439,6 +579,79 @@
         },
         "min_orders": {
           "$ref": "#/$defs/count"
+        }
+      }
+    },
+    "baseline_self_trade": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {}
+    },
+    "baseline_cancel_ratio": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "window",
+        "min_cancels",
+        "min_cancel_ratio"
+      ],
+      "properties": {
+        "window": {
+          "$ref": "#/$defs/duration"
+        },
+        "min_cancels": {
+          "$ref": "#/$defs/count"
+        },
+        "min_cancel_ratio": {
+          "$ref": "#/$defs/ratio"
+        }
+      }
+    },
+    "baseline_price_move": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "window",
+        "min_orders",
+        "min_move_bps"
+      ],
+      "properties": {
+        "window": {
+          "$ref": "#/$defs/duration"
+        },
+        "min_orders": {
+          "$ref": "#/$defs/count"
+        },
+        "min_move_bps": {
+          "$ref": "#/$defs/positive"
+        }
+      }
+    },
+    "baseline_message_rate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "window",
+        "min_messages"
+      ],
+      "properties": {
+        "window": {
+          "$ref": "#/$defs/duration"
+        },
+        "min_messages": {
+          "$ref": "#/$defs/count"
+        }
+      }
+    },
+    "baseline_close_volume": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "min_volume_share"
+      ],
+      "properties": {
+        "min_volume_share": {
+          "$ref": "#/$defs/ratio"
         }
       }
     }

@@ -1,0 +1,23 @@
+apiVersion: tradewatch/v1
+kind: DetectionRule
+metadata:
+  id: TW-BASESTUFF-001
+  version: 1
+  name: "Baseline: message rate"
+  detector: baseline_message_rate
+  taxonomy: MAR-STUFF
+  severity: low
+  owner: surveillance-engineering
+  description: >-
+    Evaluation baseline for TW-STUFF-001. Flags an account sending many order
+    and cancel messages in a short window, without comparing with normal
+    participants, order lifetimes or fills.
+spec:
+  enabled: true
+  suppress_for: 10m
+  params:
+    window: 1s
+    min_messages: 100
+  explanation: >-
+    Account {{index .Accounts 0}} sent {{int .F.messages}} order and cancel
+    messages for {{.Symbol}} within {{.Facts.window}}.

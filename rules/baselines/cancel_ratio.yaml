@@ -1,0 +1,25 @@
+apiVersion: tradewatch/v1
+kind: DetectionRule
+metadata:
+  id: TW-BASESPOOF-001
+  version: 1
+  name: "Baseline: high cancel ratio"
+  detector: baseline_cancel_ratio
+  taxonomy: MAR-SPOOF
+  severity: low
+  owner: surveillance-engineering
+  description: >-
+    Evaluation baseline for TW-SPOOF-001. Flags an account that cancels many
+    orders on one side and most of the quantity it placed there, without
+    looking at order size, lifetime or fills on the other side.
+spec:
+  enabled: true
+  suppress_for: 10m
+  params:
+    window: 5m
+    min_cancels: 2
+    min_cancel_ratio: 0.8
+  explanation: >-
+    Account {{index .Accounts 0}} cancelled {{int .F.cancels}}
+    {{.Facts.side}} orders in {{.Symbol}} within the window,
+    {{pct .F.cancel_ratio}} of the quantity it placed on that side.

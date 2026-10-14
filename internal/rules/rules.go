@@ -283,7 +283,14 @@ func ruleFiles(dir string) ([]string, error) {
 
 // Load reads and validates every rule in dir together with its taxonomy.
 func Load(dir string) (*Set, error) {
-	taxSrc, err := os.ReadFile(filepath.Join(dir, TaxonomyFile))
+	return LoadWithTaxonomy(dir, filepath.Join(dir, TaxonomyFile))
+}
+
+// LoadWithTaxonomy loads the rules of dir against the taxonomy in another
+// file, for rule directories that share a taxonomy, such as the
+// evaluation's baselines in rules/baselines.
+func LoadWithTaxonomy(dir, taxonomyFile string) (*Set, error) {
+	taxSrc, err := os.ReadFile(taxonomyFile)
 	if err != nil {
 		return nil, fmt.Errorf("rules: %w", err)
 	}

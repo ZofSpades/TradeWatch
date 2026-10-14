@@ -1,0 +1,22 @@
+apiVersion: tradewatch/v1
+kind: DetectionRule
+metadata:
+  id: TW-BASEWASH-001
+  version: 1
+  name: "Baseline: every same-owner trade"
+  detector: baseline_self_trade
+  taxonomy: MAR-WASH
+  severity: low
+  owner: surveillance-engineering
+  description: >-
+    Evaluation baseline for TW-WASH-001. Flags every trade whose buyer and
+    seller share a beneficial owner, without asking whether it looks
+    pre-arranged or repeats, and without looking for rings.
+spec:
+  enabled: true
+  suppress_for: 15m
+  params: {}
+  explanation: >-
+    Accounts {{join .Accounts ", "}} share the beneficial owner
+    {{index .Owners 0}} and traded {{int .F.quantity}} shares of {{.Symbol}}
+    with each other.
