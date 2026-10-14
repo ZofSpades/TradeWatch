@@ -681,8 +681,17 @@ components:
       required: [state]
       additionalProperties: true
       properties:
-        state: {type: string}
+        state: {type: string, description: 'running, stopped or finished'}
         session_id: {type: string}
+        session_number: {type: integer}
+        sessions_completed: {type: integer}
+        session_open: {type: string, format: date-time}
+        session_close: {type: string, format: date-time}
+        sim_time: {type: string, format: date-time}
         events_published: {type: integer}
-        pace: {type: string}
+        labels_published: {type: integer}
+        pace: {type: string, enum: [realtime, rate, fast]}
+        speed: {type: number}
+        rate: {type: number}
+        symbols: {type: array, items: {type: string}}
         injection: {$ref: '#/components/schemas/SimInjection'}
