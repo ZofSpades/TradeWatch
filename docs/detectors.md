@@ -586,6 +586,35 @@ Metrics (prefix `tradewatch_detector_`):
 | `consumer_lag_records`, `assigned_partitions` | Consumption progress |
 | `commits_total{result}`, `commit_duration_seconds`, `rule_reloads_total{result}` | Commits and rule reloads |
 
+## Performance
+
+`make bench-micro` runs `BenchmarkEngine`. It replays a seeded session
+through a fresh engine and saves raw results to
+[`results/microbench/detect.txt`](results/microbench/detect.txt), with a
+benchstat summary (median of 10 runs, 95% confidence interval) in
+[`detect.benchstat.txt`](results/microbench/detect.benchstat.txt).
+
+- **Workload:** a 20-minute session with a 3-minute close, 52,029 events.
+  Every kind of abuse is injected four times per symbol per hour, so each
+  detector has work to do.
+- **Machine:** the same as the matching engine's
+  ([matching-engine.md](matching-engine.md#performance)).
+
+| Rules enabled | Time per event | Allocations per event |
+| --- | --- | --- |
+| All five, as the service runs them | 1.84 µs ± 9% | 3.9 (533 bytes) |
+| Wash trading only | 582 ns ± 14% | 1.3 |
+| Spoofing only | 921 ns ± 15% | 1.7 |
+| Momentum ignition only | 656 ns ± 9% | 1.5 |
+| Quote stuffing only | 1.14 µs ± 12% | 2.9 |
+| Marking the close only | 652 ns ± 10% | 1.5 |
+
+A single-rule run still pays for the engine's shared bookkeeping: the
+market and order state of every symbol. Each such row is that base plus
+one detector, not the detector alone. Quote stuffing costs the most. At
+1.84 µs per event, one core runs every detector over about 540,000 events
+per second.
+
 ## Tests
 
 | Test | What it checks |

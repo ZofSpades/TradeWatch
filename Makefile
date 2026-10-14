@@ -113,6 +113,8 @@ replay: env ## Rerun detection over a recording: make replay REC=<file> [COMPARE
 .PHONY: bench-micro
 bench-micro: env ## Run Go micro-benchmarks and save results to docs/results/microbench
 	$(TOOLBOX) bash scripts/bench-micro.sh orderbook ./internal/orderbook
+	$(TOOLBOX) bash scripts/bench-micro.sh detect ./internal/detect
+	$(TOOLBOX) bash scripts/bench-micro.sh ingest ./internal/ingest
 
 .PHONY: mutation-test
 mutation-test: env ## Check that the order book tests catch hand-injected engine bugs

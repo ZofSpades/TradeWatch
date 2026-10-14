@@ -143,6 +143,20 @@ In the compose stack, marketsim corrupts about one record in 2,000
 (`TW_SIM_MALFORMED_RATE`, see [simulator.md](simulator.md)). The dead-letter
 and gap paths are therefore always active.
 
+## Performance
+
+`make bench-micro` saves ingest's micro-benchmarks to
+[`results/microbench/ingest.txt`](results/microbench/ingest.txt), with a
+benchstat summary (median of 10 runs, 95% confidence interval) in
+[`ingest.benchstat.txt`](results/microbench/ingest.benchstat.txt). The
+workload is the same seeded session as the detectors' benchmark: 52,029
+events, encoded and labelled exactly as marketsim publishes them.
+
+| Benchmark | Median | Allocations |
+| --- | --- | --- |
+| `Parse`: decode, validate and enrich one raw record | 1.48 µs ± 7% | 12 per record (650 bytes) |
+| `SequencerInOrder`: release events that arrive in order, the common case | 398 ns ± 11% per event | 0.13 per event |
+
 ## Metrics
 
 | Metric | Meaning |
