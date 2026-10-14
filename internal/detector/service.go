@@ -16,6 +16,10 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/twmb/franz-go/pkg/kadm"
 	"github.com/twmb/franz-go/pkg/kgo"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	semconv "go.opentelemetry.io/otel/semconv/v1.43.0"
+	"go.opentelemetry.io/otel/trace"
 
 	"github.com/ZofSpades/tradewatch/internal/config"
 	"github.com/ZofSpades/tradewatch/internal/detect"
@@ -24,7 +28,12 @@ import (
 	"github.com/ZofSpades/tradewatch/internal/kafka"
 	"github.com/ZofSpades/tradewatch/internal/metrics"
 	"github.com/ZofSpades/tradewatch/internal/rules"
+	"github.com/ZofSpades/tradewatch/internal/tracing"
 )
+
+// tracer is looked up on use, so it follows whichever provider is installed:
+// OpenTelemetry binds a tracer taken earlier to the first provider only.
+func tracer() trace.Tracer { return otel.Tracer("github.com/ZofSpades/tradewatch/internal/detector") }
 
 // Config configures the detector service.
 type Config struct {
@@ -369,6 +378,17 @@ func (s *Service) handle(fetches kgo.Fetches) {
 
 func (s *Service) process(part *partition, r *kgo.Record) {
 	part.next = r.Offset + 1
+	// Alerts start a trace of their own, unless the event that triggered
+	// them was sampled upstream: then they continue its trace.
+	parent := context.Background()
+	if tracing.Traced(r) {
+		var span trace.Span
+		parent, span = tracer().Start(tracing.Extract(parent, r), "process "+r.Topic,
+			trace.WithSpanKind(trace.SpanKindConsumer),
+			trace.WithAttributes(tracing.MessagingAttrs("process", r, true)...),
+			trace.WithAttributes(semconv.MessagingConsumerGroupName(s.cfg.Group)))
+		defer span.End()
+	}
 	var ev twpb.MarketEvent
 	if err := events.Unmarshal(r.Value, &ev); err != nil {
 		s.m.decode.Inc()
@@ -386,18 +406,52 @@ func (s *Service) process(part *partition, r *kgo.Record) {
 			s.m.replayed.Inc()
 			continue
 		}
-		a.EmittedAtNs = time.Now().UnixNano()
-		value, err := events.Marshal(a)
-		if err != nil {
-			s.fail(fmt.Errorf("encode alert: %w", err))
-			return
-		}
-		s.cl.Produce(context.Background(), &kgo.Record{
-			Topic: s.topics.Alerts, Key: []byte(a.GetAlertKey()), Value: value,
-			Headers: kafka.EventMeta{Schema: events.SchemaAlert, Session: a.GetSessionId()}.Headers(),
-		}, s.produced)
-		s.m.alerts.WithLabelValues(a.GetAbuseType().String(), a.GetRuleId()).Inc()
+		s.produceAlert(parent, a)
 	}
+}
+
+// produceAlert sends an alert under a span that ends when the broker
+// acknowledges it. The alert records the span's trace ID, and the record's
+// headers carry the context on to the alert sink.
+func (s *Service) produceAlert(parent context.Context, a *twpb.Alert) {
+	rec := &kgo.Record{
+		Topic: s.topics.Alerts, Key: []byte(a.GetAlertKey()),
+		Headers: kafka.EventMeta{Schema: events.SchemaAlert, Session: a.GetSessionId()}.Headers(),
+	}
+	now := time.Now()
+	ctx, span := tracer().Start(parent, "raise "+a.GetRuleId(),
+		trace.WithSpanKind(trace.SpanKindProducer),
+		trace.WithAttributes(tracing.MessagingAttrs("send", rec, false)...),
+		trace.WithAttributes(
+			attribute.String("tradewatch.alert.key", a.GetAlertKey()),
+			attribute.String("tradewatch.alert.rule", a.GetRuleId()),
+			attribute.Int64("tradewatch.alert.rule_version", int64(a.GetRuleVersion())),
+			attribute.String("tradewatch.alert.abuse_type", a.GetAbuseType().String()),
+			attribute.Float64("tradewatch.alert.score", a.GetScore()),
+			attribute.String("tradewatch.session", a.GetSessionId()),
+			attribute.String("tradewatch.symbol", a.GetSymbol()),
+			attribute.Int64("tradewatch.trigger.seq", int64(a.GetTriggerSeq())),
+		))
+	if pub := a.GetTriggerPublishedAtNs(); pub > 0 {
+		span.SetAttributes(attribute.Float64("tradewatch.trigger.age_ms", float64(now.UnixNano()-pub)/1e6))
+	}
+	if sc := span.SpanContext(); sc.IsValid() {
+		a.TraceId = sc.TraceID().String()
+	}
+	a.EmittedAtNs = now.UnixNano()
+	value, err := events.Marshal(a)
+	if err != nil {
+		span.End()
+		s.fail(fmt.Errorf("encode alert: %w", err))
+		return
+	}
+	rec.Value = value
+	tracing.Inject(ctx, rec)
+	s.cl.Produce(context.Background(), rec, func(r *kgo.Record, err error) {
+		s.produced(r, err)
+		tracing.EndSend(span, r, err)
+	})
+	s.m.alerts.WithLabelValues(a.GetAbuseType().String(), a.GetRuleId()).Inc()
 }
 
 func (s *Service) produced(_ *kgo.Record, err error) {

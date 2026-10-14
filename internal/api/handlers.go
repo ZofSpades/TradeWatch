@@ -124,7 +124,9 @@ func (s *Server) getAlert(w http.ResponseWriter, r *http.Request) {
 		s.internalError(w, r, err)
 		return
 	}
-	writeJSON(w, http.StatusOK, detail(a, full))
+	d := detail(a, full)
+	d.TraceURL = s.traceLink(d.TraceID)
+	writeJSON(w, http.StatusOK, d)
 }
 
 func (s *Server) getAudit(w http.ResponseWriter, r *http.Request) {
@@ -287,6 +289,8 @@ type alertDetail struct {
 	EmittedAt        *time.Time `json:"emitted_at,omitempty"`
 	LastSeenAt       time.Time  `json:"last_seen_at"`
 	TriggerSeq       uint64     `json:"trigger_seq,omitempty"`
+	TraceID          string     `json:"trace_id,omitempty"`
+	TraceURL         string     `json:"trace_url,omitempty"`
 	Evidence         evidence   `json:"evidence"`
 }
 
@@ -362,6 +366,7 @@ func detail(a *store.Alert, full *twpb.Alert) alertDetail {
 	d := alertDetail{
 		Summary: live.Summarize(a), Detector: a.Detector, RuleDigest: a.RuleDigest,
 		DetectorInstance: full.GetDetectorInstance(), LastSeenAt: a.LastSeenAt.UTC(), TriggerSeq: full.GetTriggerSeq(),
+		TraceID: full.GetTraceId(),
 	}
 	if a.EmittedAtNs > 0 {
 		t := nsTime(a.EmittedAtNs)

@@ -453,6 +453,10 @@ export interface components {
             /** Format: date-time */
             last_seen_at: string;
             trigger_seq?: number;
+            /** @description The OpenTelemetry trace of the alert, from the detector through the alert sink to the event stream */
+            trace_id?: string;
+            /** @description The trace in the Jaeger UI, when the API is configured with its address */
+            trace_url?: string;
             evidence: components["schemas"]["Evidence"];
         };
         Evidence: {
@@ -635,6 +639,8 @@ export interface components {
             links: {
                 /** @description The pipeline dashboard in Grafana, when configured */
                 grafana?: string;
+                /** @description Trace search in the Jaeger UI, when configured */
+                traces?: string;
             };
         };
         SimPace: {

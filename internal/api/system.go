@@ -14,10 +14,13 @@ import (
 	"golang.org/x/sync/singleflight"
 )
 
-// Links are the URLs of the monitoring tools the dashboard links to.
+// Links are the URLs of the monitoring tools the dashboard links to, as a
+// browser reaches them.
 type Links struct {
-	// Grafana is Grafana's base URL as a browser reaches it.
+	// Grafana is Grafana's base URL.
 	Grafana string
+	// Traces is the Jaeger UI's base URL.
+	Traces string
 }
 
 // SetMonitoring connects GET /api/v1/system to the Prometheus server at
@@ -102,6 +105,7 @@ type systemHistory struct {
 
 type systemLinks struct {
 	Grafana string `json:"grafana,omitempty"`
+	Traces  string `json:"traces,omitempty"`
 }
 
 // services lists the pipeline's services in data-flow order.
@@ -140,9 +144,9 @@ func (s *Server) system(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	v, err, _ := s.sysCache.group.Do("status", func() (any, error) {
-		// Detached from the request, which may be cancelled while others
-		// wait for the same result.
-		ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+		// Detached from the request's cancellation, since others may wait
+		// for the same result, but inside its trace.
+		ctx, cancel := context.WithTimeout(context.WithoutCancel(r.Context()), 15*time.Second)
 		defer cancel()
 		st, err := s.collectSystem(ctx, time.Now())
 		if err == nil {
@@ -163,7 +167,7 @@ func (s *Server) system(w http.ResponseWriter, r *http.Request) {
 // collectSystem queries Prometheus for the pipeline's status at now.
 func (s *Server) collectSystem(ctx context.Context, now time.Time) (*systemStatus, error) {
 	now = now.Truncate(time.Second)
-	st := &systemStatus{GeneratedAt: now.UTC(), Links: systemLinks{Grafana: s.dashboardLink()}}
+	st := &systemStatus{GeneratedAt: now.UTC(), Links: systemLinks{Grafana: s.dashboardLink(), Traces: s.tracesLink()}}
 	g, gctx := errgroup.WithContext(ctx)
 	g.SetLimit(8)
 	instant := func(expr string, into func([]promSample)) {
@@ -287,4 +291,20 @@ func (s *Server) dashboardLink() string {
 		return ""
 	}
 	return strings.TrimSuffix(s.links.Grafana, "/") + "/d/tradewatch-pipeline"
+}
+
+// tracesLink is the Jaeger UI's search page.
+func (s *Server) tracesLink() string {
+	if s.links.Traces == "" {
+		return ""
+	}
+	return strings.TrimSuffix(s.links.Traces, "/") + "/search"
+}
+
+// traceLink is the Jaeger UI's page for a trace.
+func (s *Server) traceLink(traceID string) string {
+	if s.links.Traces == "" || traceID == "" {
+		return ""
+	}
+	return strings.TrimSuffix(s.links.Traces, "/") + "/trace/" + traceID
 }

@@ -5,6 +5,7 @@ package detector
 import (
 	"context"
 	"log/slog"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -12,6 +13,8 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/twmb/franz-go/pkg/kadm"
 	"github.com/twmb/franz-go/pkg/kgo"
+	sdktrace "go.opentelemetry.io/otel/sdk/trace"
+	"go.opentelemetry.io/otel/trace"
 	"google.golang.org/protobuf/proto"
 
 	"github.com/ZofSpades/tradewatch/internal/detect"
@@ -82,10 +85,10 @@ func (p *inProcess) Emit(sym *sim.Symbol, ev *ob.Event) error {
 }
 
 // normalized clears the fields that legitimately differ between a live and
-// an in-process run: wall-clock times.
+// an in-process run: wall-clock times, and the trace.
 func normalized(a *twpb.Alert) *twpb.Alert {
 	c := proto.Clone(a).(*twpb.Alert)
-	c.EmittedAtNs, c.TriggerPublishedAtNs = 0, 0
+	c.EmittedAtNs, c.TriggerPublishedAtNs, c.TraceId = 0, 0, ""
 	return c
 }
 
@@ -251,11 +254,13 @@ func waitCaughtUp(t *testing.T, kcfg kafka.Config, svc *Service, timeout time.Du
 	}
 }
 
-// alertTail collects the alerts topic.
+// alertTail collects the alerts topic, with each record's traceparent
+// header.
 type alertTail struct {
-	mu     sync.Mutex
-	alerts []*twpb.Alert
-	stop   context.CancelFunc
+	mu      sync.Mutex
+	alerts  []*twpb.Alert
+	parents []string
+	stop    context.CancelFunc
 }
 
 func tailAlerts(t *testing.T, kcfg kafka.Config) *alertTail {
@@ -274,8 +279,10 @@ func tailAlerts(t *testing.T, kcfg kafka.Config) *alertTail {
 					t.Errorf("undecodable alert: %v", err)
 					return
 				}
+				tp, _ := kafka.HeaderValue(r.Headers, "traceparent")
 				at.mu.Lock()
 				at.alerts = append(at.alerts, &a)
+				at.parents = append(at.parents, tp)
 				at.mu.Unlock()
 			})
 		}
@@ -448,4 +455,109 @@ func TestStopDuringReplayKeepsThePreviousCheckpoint(t *testing.T) {
 	if dups := compare(t, alerts.unique(), want); dups != 0 {
 		t.Errorf("%d duplicate alerts after a replay was interrupted", dups)
 	}
+}
+
+// With tracing on, a sampled event is followed from marketsim through ingest
+// to a detector, every alert record carries the trace of the span that
+// raised it, and an alert raised by a sampled event continues the event's
+// trace. Tracing changes no alert.
+func TestTracesFollowSampledEventsAndEveryAlert(t *testing.T) {
+	rec := testutil.RecordSpans(t)
+	kcfg := itKafka(t)
+	cleanup(t, kcfg)
+	mcfg := sessionConfig(kcfg, marketsim.PaceFast, 0)
+	mcfg.TraceSampleRatio = 0.02
+	want := expectedAlerts(t, mcfg)
+
+	ms := startMarketsim(t, mcfg)
+	in := startIngest(t, kcfg)
+	det, svc := startDetectorService(t, kcfg)
+	alerts := tailAlerts(t, kcfg)
+	alerts.waitFor(t, len(want), 3*time.Minute)
+	waitCaughtUp(t, kcfg, svc, time.Minute)
+	time.Sleep(time.Second)
+	det.stop(t)
+	in.stop(t)
+	ms.stop(t)
+	if dups := compare(t, alerts.unique(), want); dups != 0 {
+		t.Errorf("%d duplicate alerts", dups)
+	}
+
+	const (
+		marketsimScope = "github.com/ZofSpades/tradewatch/internal/marketsim"
+		ingestScope    = "github.com/ZofSpades/tradewatch/internal/ingest"
+		detectorScope  = "github.com/ZofSpades/tradewatch/internal/detector"
+	)
+	spans := rec.Ended()
+	byID := map[trace.SpanID]sdktrace.ReadOnlySpan{}
+	children := map[trace.SpanID][]sdktrace.ReadOnlySpan{}
+	raised := map[string]sdktrace.ReadOnlySpan{} // by trace ID
+	for _, sp := range spans {
+		byID[sp.SpanContext().SpanID()] = sp
+		children[sp.Parent().SpanID()] = append(children[sp.Parent().SpanID()], sp)
+		if strings.HasPrefix(sp.Name(), "raise ") {
+			raised[sp.SpanContext().TraceID().String()] = sp
+		}
+	}
+	child := func(parent sdktrace.ReadOnlySpan, scope, name string) sdktrace.ReadOnlySpan {
+		if parent == nil {
+			return nil
+		}
+		for _, c := range children[parent.SpanContext().SpanID()] {
+			if c.InstrumentationScope().Name == scope && c.Name() == name {
+				return c
+			}
+		}
+		return nil
+	}
+
+	// Every alert record names the trace of the span that raised it.
+	alerts.mu.Lock()
+	for i, a := range alerts.alerts {
+		parts := strings.Split(alerts.parents[i], "-")
+		sp := raised[a.GetTraceId()]
+		switch {
+		case len(a.GetTraceId()) != 32:
+			t.Errorf("alert %s has trace ID %q", a.GetAlertKey(), a.GetTraceId())
+		case len(parts) != 4 || parts[1] != a.GetTraceId():
+			t.Errorf("alert %s: header traceparent %q does not carry trace %s", a.GetAlertKey(), alerts.parents[i], a.GetTraceId())
+		case sp == nil || sp.Name() != "raise "+a.GetRuleId() || testutil.SpanAttrs(sp)["tradewatch.alert.key"] != a.GetAlertKey():
+			t.Errorf("alert %s: no matching raise span", a.GetAlertKey())
+		}
+	}
+	alerts.mu.Unlock()
+
+	// Every sampled event reached a detector through ingest, hop by hop.
+	sampled, complete := 0, 0
+	for _, sp := range spans {
+		if sp.InstrumentationScope().Name != marketsimScope {
+			continue
+		}
+		sampled++
+		topic := strings.TrimPrefix(sp.Name(), "send ")
+		processed := child(sp, ingestScope, "process "+topic)
+		released := child(processed, ingestScope, "send "+kcfg.Topics().MarketEvents)
+		if child(released, detectorScope, "process "+kcfg.Topics().MarketEvents) != nil {
+			complete++
+		}
+	}
+	if sampled < 100 {
+		t.Fatalf("only %d events were sampled; the test needs more", sampled)
+	}
+	if complete != sampled {
+		t.Errorf("%d of %d sampled events were traced through to a detector", complete, sampled)
+	}
+
+	// An alert raised by a sampled event continues that event's trace.
+	continued := 0
+	for _, sp := range raised {
+		if parent := byID[sp.Parent().SpanID()]; parent != nil {
+			if parent.InstrumentationScope().Name != detectorScope || !strings.HasPrefix(parent.Name(), "process ") {
+				t.Errorf("%s's parent is %s", sp.Name(), parent.Name())
+			}
+			continued++
+		}
+	}
+	t.Logf("%d alerts traced; %d sampled events followed end to end; %d alerts continued a sampled event's trace",
+		len(raised), complete, continued)
 }

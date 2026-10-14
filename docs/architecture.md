@@ -67,6 +67,7 @@ data and labels.
 | `web` | The dashboard, served by nginx, which proxies `/api` to the API | `localhost:3000` |
 | `prometheus` | Scrapes every admin port and evaluates the alerting rules ([observability.md](observability.md)) | `localhost:9090` |
 | `grafana` | Provisioned dashboards over Prometheus | `localhost:3001` |
+| `jaeger` | Receives every service's traces over OTLP and keeps the most recent 20,000 in memory | `localhost:16686` |
 
 Each admin server exposes `/metrics`, `/healthz`, `/readyz` and the Go
 profiler under `/debug/pprof/`. Admin ports stay on the internal network:

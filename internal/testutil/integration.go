@@ -1,4 +1,4 @@
-// Package testutil holds helpers shared by integration tests.
+// Package testutil holds helpers shared by tests.
 //
 // Integration tests are compiled only with the "integration" build tag and
 // expect the infrastructure started by `make test` (docker compose). The

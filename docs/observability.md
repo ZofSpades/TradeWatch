@@ -1,13 +1,15 @@
 # Observability
 
-Every TradeWatch service exports Prometheus metrics and can be profiled in
-place. The compose stack runs Prometheus and Grafana with dashboards and
-alerting rules provisioned from this repository.
+Every TradeWatch service exports Prometheus metrics and OpenTelemetry
+traces, and can be profiled in place. The compose stack runs Prometheus and
+Grafana, with dashboards and alerting rules provisioned from this
+repository, and Jaeger for traces.
 
 | What | Where (compose) | Configuration |
 | --- | --- | --- |
 | Grafana dashboards | `http://localhost:3001`. Anyone who can reach the port may view; changes need `admin` and `GRAFANA_ADMIN_PASSWORD` from `.env` | [`deploy/compose/grafana`](../deploy/compose/grafana) |
 | Prometheus, with the alerting rules under Alerts | `http://localhost:9090` | [`deploy/compose/prometheus`](../deploy/compose/prometheus) |
+| Jaeger, with each alert's trace and a sample of market events | `http://localhost:16686` | [`deploy/compose/jaeger`](../deploy/compose/jaeger) |
 | Each service's `/metrics`, `/healthz`, `/readyz` and `/debug/pprof/` | admin ports `:8090`–`:8094`, on the compose network only | [architecture.md](architecture.md#services) |
 
 ## Metrics
@@ -108,6 +110,64 @@ The tests cover:
 - the dead-letter and lost-event ratios at the demo's corruption rate and
   above their thresholds;
 - the rendered summaries.
+
+## Tracing
+
+Every service exports OpenTelemetry spans over OTLP/HTTP to Jaeger
+(`http://localhost:16686` in compose). Trace context crosses Kafka as a
+W3C `traceparent` record header and crosses Redis pub/sub inside the live
+event. Two kinds of trace follow work through the pipeline:
+
+| Trace | Spans | Started for |
+| --- | --- | --- |
+| A market event | marketsim `send <feed>` (until the broker acknowledges it) → ingest `process <feed>` (until the sequencer releases the event) → ingest `send market_events` → detector `process market_events` | a sample of events, `TW_TRACE_EVENT_SAMPLE_RATIO` (compose: 1 in 500) |
+| An alert | detector `raise <rule>` (until acknowledged) → alertsink `store alert` (Postgres, then the live views) → api `stream alert` (handed to every connected client) | every alert |
+
+- **Linked traces.** If the event that triggered an alert was sampled, the
+  alert's trace continues the event's, from the exchange to the analyst's
+  screen.
+- **Spans record:**
+  - Kafka topic, partition, offset and key, by OpenTelemetry's messaging
+    conventions;
+  - the alert's key, rule, score and symbol;
+  - whether a delivery was a duplicate the alert key absorbed;
+  - how many clients the alert was streamed to.
+- **The alert keeps its trace ID** (`trace_id`). The dashboard links each
+  alert to its trace in Jaeger. A redelivered alert keeps the first
+  delivery's trace, and the duplicate's own trace shows it absorbed.
+- **API requests.** Every request except the event stream is a trace, named
+  by its route. Postgres queries made for a request become its child
+  spans, and so do the Prometheus queries behind `GET /api/v1/system`.
+  Queries outside a request, such as the alert sink's batch writes, are
+  not traced.
+
+**What tracing never changes.** Trace context lives only in record headers
+and in the alert's `trace_id`. The deterministic alert key does not
+include `trace_id`, so detection and deduplication are unaffected.
+`TestTracesFollowSampledEventsAndEveryAlert` runs the pipeline with 2% of
+events sampled and checks four things against real Kafka:
+
+- the alerts are exactly the in-process alerts;
+- every alert record carries the trace of the span that raised it;
+- every sampled event forms a complete parent-child chain from marketsim
+  through ingest to a detector;
+- alerts raised by sampled events continue those events' traces.
+
+**Bounded cost.**
+- An untraced record costs one scan of its headers.
+- Ingest holds at most 10,000 sampled events' spans while they wait for
+  release. A span never released, such as a duplicate's, ends after two
+  minutes.
+- Jaeger keeps the most recent 20,000 traces in memory.
+
+Tracing is off unless `TW_OTLP_ENDPOINT` is set, and then the default
+no-op tracer costs almost nothing.
+
+| Variable | Default | Meaning |
+| --- | --- | --- |
+| `TW_OTLP_ENDPOINT` | none: tracing off | OTLP/HTTP base URL, such as `http://jaeger:4318` |
+| `TW_TRACE_EVENT_SAMPLE_RATIO` | `0.001` | Fraction of market events marketsim traces (marketsim only) |
+| `TW_API_TRACES_URL` | none | Jaeger UI as a browser reaches it; the API turns an alert's `trace_id` into a link |
 
 ## Profiling
 

@@ -59,6 +59,10 @@ type Config struct {
 	// always hold the clean events.
 	MalformedRate float64
 
+	// TraceSampleRatio is the fraction of published events that start a
+	// trace (internal/tracing). Zero traces none.
+	TraceSampleRatio float64
+
 	// RecordDir, when set, receives one recording file per session.
 	RecordDir string
 	// AutoStart starts the first session immediately; otherwise the

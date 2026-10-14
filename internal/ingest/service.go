@@ -12,13 +12,23 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/twmb/franz-go/pkg/kadm"
 	"github.com/twmb/franz-go/pkg/kgo"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
+	semconv "go.opentelemetry.io/otel/semconv/v1.43.0"
+	"go.opentelemetry.io/otel/trace"
 
 	"github.com/ZofSpades/tradewatch/internal/config"
 	"github.com/ZofSpades/tradewatch/internal/events"
 	"github.com/ZofSpades/tradewatch/internal/events/twpb"
 	"github.com/ZofSpades/tradewatch/internal/kafka"
 	"github.com/ZofSpades/tradewatch/internal/metrics"
+	"github.com/ZofSpades/tradewatch/internal/tracing"
 )
+
+// tracer is looked up on use, so it follows whichever provider is installed:
+// OpenTelemetry binds a tracer taken earlier to the first provider only.
+func tracer() trace.Tracer { return otel.Tracer("github.com/ZofSpades/tradewatch/internal/ingest") }
 
 // Config configures the ingest service.
 type Config struct {
@@ -141,6 +151,9 @@ type Service struct {
 
 	mu     sync.Mutex
 	groups map[int32]*group
+	// traced holds the spans of sampled events from receipt until the
+	// sequencer releases them, which may be after later records arrive.
+	traced map[eventID]tracedEvent
 
 	produceMu  sync.Mutex
 	produceErr error
@@ -178,10 +191,33 @@ func NewService(cfg Config, reg prometheus.Registerer, log *slog.Logger) *Servic
 			topics.Trades: FeedTrades, topics.BookSnapshots: FeedBook,
 		},
 		groups: map[int32]*group{},
+		traced: map[eventID]tracedEvent{},
 		fatal:  make(chan error, 1),
 	}
 	return s
 }
+
+// eventID identifies a market event: its place in its symbol's sequence.
+type eventID struct {
+	session, symbol string
+	seq             uint64
+}
+
+// tracedEvent is the span of a sampled event the sequencer still holds.
+type tracedEvent struct {
+	ctx   context.Context
+	span  trace.Span
+	since time.Time
+}
+
+const (
+	// maxTraced bounds the spans held for unreleased events; beyond it a
+	// sampled event's trace ends at ingest.
+	maxTraced = 10_000
+	// tracedTimeout ends the span of a sampled event that was never
+	// released, such as a duplicate or one of an abandoned session.
+	tracedTimeout = 2 * time.Minute
+)
 
 // Attach supplies the group client and the reference-data tail.
 func (s *Service) Attach(cl *kgo.Client, ref *RefDataTail) {
@@ -293,6 +329,14 @@ func isRefDataReason(reason string) bool {
 }
 
 func (s *Service) handleRecord(ctx context.Context, g *group, feed Feed, r *kgo.Record) {
+	var tctx context.Context
+	var span trace.Span
+	if tracing.Traced(r) {
+		tctx, span = tracer().Start(tracing.Extract(context.Background(), r), "process "+r.Topic,
+			trace.WithSpanKind(trace.SpanKindConsumer),
+			trace.WithAttributes(tracing.MessagingAttrs("process", r, true)...),
+			trace.WithAttributes(semconv.MessagingConsumerGroupName(s.cfg.Group)))
+	}
 	meta := kafka.ParseEventMeta(r.Headers)
 	raw := Raw{Feed: feed, Key: r.Key, Value: r.Value, Meta: meta}
 	ev, rej := Parse(raw, s.ref.Data, time.Now().UnixNano())
@@ -306,6 +350,11 @@ func (s *Service) handleRecord(ctx context.Context, g *group, feed Feed, r *kgo.
 	if rej != nil {
 		s.m.records.WithLabelValues(feed.String(), "rejected").Inc()
 		s.deadLetter(r, rej)
+		if span != nil {
+			span.SetAttributes(attribute.String("tradewatch.dead_letter.reason", rej.Reason))
+			span.SetStatus(codes.Error, "dead-lettered: "+rej.Reason)
+			span.End()
+		}
 		if key, seq, ok := position(r, meta); ok {
 			g.seq.Observe(feed, r.Offset, key, seq, nil, rej.Reason)
 		} else {
@@ -315,7 +364,36 @@ func (s *Service) handleRecord(ctx context.Context, g *group, feed Feed, r *kgo.
 	}
 	s.m.records.WithLabelValues(feed.String(), "accepted").Inc()
 	h := events.HeaderOf(ev)
+	if span != nil {
+		// Held until the sequencer releases the event, which Observe may do
+		// at once.
+		s.holdTrace(tctx, eventID{h.GetSessionId(), h.GetSymbol(), h.GetSeq()}, span)
+	}
 	g.seq.Observe(feed, r.Offset, SeqKey{Session: h.GetSessionId(), Symbol: h.GetSymbol()}, h.GetSeq(), ev, "")
+}
+
+func (s *Service) holdTrace(ctx context.Context, id eventID, span trace.Span) {
+	if old, ok := s.traced[id]; ok {
+		old.span.AddEvent("a duplicate of this record arrived")
+		old.span.End()
+	} else if len(s.traced) >= maxTraced {
+		span.AddEvent("not followed further: too many sampled events are waiting for release")
+		span.End()
+		return
+	}
+	s.traced[id] = tracedEvent{ctx: ctx, span: span, since: time.Now()}
+}
+
+// expireTraces ends the spans of sampled events that were never released.
+func (s *Service) expireTraces() {
+	cutoff := time.Now().Add(-tracedTimeout)
+	for id, te := range s.traced {
+		if te.since.Before(cutoff) {
+			te.span.AddEvent("never released: a duplicate, or its session was abandoned")
+			te.span.End()
+			delete(s.traced, id)
+		}
+	}
 }
 
 // position recovers a rejected record's place in its sequence from the
@@ -335,14 +413,41 @@ func (s *Service) emit(ev *twpb.MarketEvent) {
 		s.fail(fmt.Errorf("marshal market event: %w", err))
 		return
 	}
-	s.cl.Produce(context.Background(), &kgo.Record{
+	rec := &kgo.Record{
 		Topic: s.topics.MarketEvents, Key: []byte(h.GetSymbol()), Value: value,
 		Headers: kafka.EventMeta{Schema: events.SchemaMarketEvent, Session: h.GetSessionId(), Seq: h.GetSeq(), HasSeq: true}.Headers(),
-	}, s.produced)
+	}
+	if te, ok := s.releaseTrace(h); ok {
+		te.span.AddEvent("released in sequence order")
+		sctx, send := tracer().Start(te.ctx, "send "+rec.Topic,
+			trace.WithSpanKind(trace.SpanKindProducer), trace.WithAttributes(tracing.MessagingAttrs("send", rec, false)...))
+		tracing.Inject(sctx, rec)
+		te.span.End()
+		s.cl.Produce(context.Background(), rec, func(r *kgo.Record, err error) {
+			s.produced(r, err)
+			tracing.EndSend(send, r, err)
+		})
+	} else {
+		s.cl.Produce(context.Background(), rec, s.produced)
+	}
 	s.m.released.WithLabelValues(events.KindOf(ev).String()).Inc()
 	if pub := h.GetPublishedAtNs(); pub > 0 && ev.GetIngestedAtNs() > 0 {
 		s.m.latency.Observe(float64(time.Now().UnixNano()-pub) / 1e9)
 	}
+}
+
+// releaseTrace takes the held span of a sampled event the sequencer is
+// releasing. Most events are not sampled, and then the map is empty.
+func (s *Service) releaseTrace(h *twpb.EventHeader) (tracedEvent, bool) {
+	if len(s.traced) == 0 {
+		return tracedEvent{}, false
+	}
+	id := eventID{h.GetSessionId(), h.GetSymbol(), h.GetSeq()}
+	te, ok := s.traced[id]
+	if ok {
+		delete(s.traced, id)
+	}
+	return te, ok
 }
 
 func (s *Service) deadLetter(r *kgo.Record, rej *Rejection) {
@@ -433,6 +538,7 @@ func (s *Service) forgetIdle() {
 			s.log.Info("forgot sequences of abandoned sessions", "partition", p, "sequences", n)
 		}
 	}
+	s.expireTraces()
 }
 
 func (s *Service) checkGaps(ctx context.Context) {

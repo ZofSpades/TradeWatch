@@ -2,11 +2,15 @@ package marketsim
 
 import (
 	"context"
+	"math/rand/v2"
 	"sync"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/twmb/franz-go/pkg/kgo"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 
 	"github.com/ZofSpades/tradewatch/internal/events"
 	"github.com/ZofSpades/tradewatch/internal/events/twpb"
@@ -14,7 +18,12 @@ import (
 	ob "github.com/ZofSpades/tradewatch/internal/orderbook"
 	"github.com/ZofSpades/tradewatch/internal/recording"
 	"github.com/ZofSpades/tradewatch/internal/sim"
+	"github.com/ZofSpades/tradewatch/internal/tracing"
 )
+
+// tracer is looked up on use, so it follows whichever provider is installed:
+// OpenTelemetry binds a tracer taken earlier to the first provider only.
+func tracer() trace.Tracer { return otel.Tracer("github.com/ZofSpades/tradewatch/internal/marketsim") }
 
 // pacer delays events so that simulated time advances at the configured
 // pace. It only ever sleeps; it never changes event content, so pacing has
@@ -130,18 +139,20 @@ type publisher struct {
 	onEvent func(eventTime int64)
 	onLabel func()
 
-	corrupt   *corrupter
-	keys      map[string][]byte
-	counters  [5]prometheus.Counter
-	lastFlush time.Time
+	corrupt *corrupter
+	// traceRatio is the fraction of events that start a trace.
+	traceRatio float64
+	keys       map[string][]byte
+	counters   [5]prometheus.Counter
+	lastFlush  time.Time
 
 	mu  sync.Mutex
 	err error
 }
 
-func newPublisher(ctx context.Context, cl *kgo.Client, topics kafka.Topics, session string, pace *pacer, rec *recording.Writer, m *publishMetrics, corrupt *corrupter, onEvent func(int64)) *publisher {
+func newPublisher(ctx context.Context, cl *kgo.Client, topics kafka.Topics, session string, pace *pacer, rec *recording.Writer, m *publishMetrics, corrupt *corrupter, traceRatio float64, onEvent func(int64)) *publisher {
 	p := &publisher{
-		ctx: ctx, cl: cl, topics: topics, session: session, pace: pace, rec: rec, corrupt: corrupt,
+		ctx: ctx, cl: cl, topics: topics, session: session, pace: pace, rec: rec, corrupt: corrupt, traceRatio: traceRatio,
 		metrics: m, onEvent: onEvent, keys: map[string][]byte{},
 	}
 	for feed, name := range map[sim.Feed]string{sim.FeedOrders: "orders", sim.FeedCancels: "cancels", sim.FeedTrades: "trades", sim.FeedBook: "book_snapshots"} {
@@ -217,11 +228,14 @@ func (p *publisher) Emit(sym *sim.Symbol, ev *ob.Event) error {
 	feed := sim.FeedOf(ev.Kind)
 	meta := kafka.EventMeta{Schema: schemaOfFeed[feed], Session: p.session, Seq: ev.Seq, HasSeq: true}
 	value, headers := p.corrupt.apply(msg, value, meta.Headers())
+	rec := &kgo.Record{Topic: p.topic(feed), Key: p.key(sym.Symbol), Value: value, Headers: headers}
 	// The client context, not the session context, is used for producing:
 	// stopping a session must still deliver what was already handed over.
-	p.cl.Produce(context.Background(), &kgo.Record{
-		Topic: p.topic(feed), Key: p.key(sym.Symbol), Value: value, Headers: headers,
-	}, p.delivered)
+	if p.traceRatio > 0 && rand.Float64() < p.traceRatio {
+		p.produceTraced(rec, sym.Symbol, ev.Seq)
+	} else {
+		p.cl.Produce(context.Background(), rec, p.delivered)
+	}
 	p.counters[feed].Inc()
 	if p.onEvent != nil {
 		p.onEvent(ev.Time)
@@ -253,6 +267,25 @@ func (p *publisher) Label(l *twpb.GroundTruthLabel) error {
 		p.onLabel()
 	}
 	return nil
+}
+
+// produceTraced produces rec as the first hop of a new trace: a producer
+// span that ends when the broker acknowledges the record, and whose
+// context the record's headers carry on to ingest.
+func (p *publisher) produceTraced(rec *kgo.Record, symbol string, seq uint64) {
+	ctx, span := tracer().Start(context.Background(), "send "+rec.Topic,
+		trace.WithSpanKind(trace.SpanKindProducer),
+		trace.WithAttributes(tracing.MessagingAttrs("send", rec, false)...),
+		trace.WithAttributes(
+			attribute.String("tradewatch.session", p.session),
+			attribute.String("tradewatch.symbol", symbol),
+			attribute.Int64("tradewatch.seq", int64(seq)),
+		))
+	tracing.Inject(ctx, rec)
+	p.cl.Produce(context.Background(), rec, func(r *kgo.Record, err error) {
+		p.delivered(r, err)
+		tracing.EndSend(span, r, err)
+	})
 }
 
 func (p *publisher) delivered(_ *kgo.Record, err error) {

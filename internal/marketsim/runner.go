@@ -189,7 +189,7 @@ func (r *Runner) runSession(ctx, sctx context.Context, n int) error {
 			return fmt.Errorf("create recording: %w", err)
 		}
 	}
-	pub := newPublisher(sctx, r.cl, r.cfg.Kafka.Topics(), scfg.SessionID, r.pace, rec, r.pm, r.corrupt, func(t int64) {
+	pub := newPublisher(sctx, r.cl, r.cfg.Kafka.Topics(), scfg.SessionID, r.pace, rec, r.pm, r.corrupt, r.cfg.TraceSampleRatio, func(t int64) {
 		r.events.Add(1)
 		r.simTimeNs.Store(t)
 		r.pm.simTime.Set(float64(t) / 1e9)

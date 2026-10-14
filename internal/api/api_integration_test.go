@@ -82,6 +82,9 @@ func setup(t *testing.T) *apiEnv {
 	if err != nil {
 		t.Fatal(err)
 	}
+	if err := srv.SetMonitoring("", Links{Traces: "http://jaeger.test:16686/"}); err != nil {
+		t.Fatal(err)
+	}
 	go srv.hub.run(ctx)
 	deadline := time.Now().Add(10 * time.Second)
 	for !srv.hub.ready.Load() {
@@ -224,7 +227,7 @@ func richAlert(i int) *twpb.Alert {
 		Severity: twpb.Severity_SEVERITY_HIGH, Score: float64(60 + i), Symbol: "QZAP", AccountIds: []string{"ACC-1"},
 		BeneficialOwnerIds: []string{"BO-1"}, WindowStartNs: 1e18, WindowEndNs: 1e18 + 5e9,
 		DetectedAtNs: 1e18 + int64(i)*1e9, EmittedAtNs: time.Now().UnixNano(), Explanation: "Account ACC-1 cancelled 3 large buy orders.",
-		DetectorInstance: "det-a", TriggerSeq: 99,
+		DetectorInstance: "det-a", TriggerSeq: 99, TraceId: "4bf92f3577b34da6a3ce929d0e0e4736",
 		Evidence: &twpb.Evidence{
 			OrderIds: []uint64{1, 2, 3}, TradeIds: []uint64{7},
 			Features: []*twpb.Feature{
@@ -254,7 +257,7 @@ func TestAlertWorkflowOverHTTP(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := e.views.Raised(ctx, raised); err != nil {
+	if err := e.views.Raised(ctx, raised, nil); err != nil {
 		t.Fatal(err)
 	}
 	key := batch[1].GetAlertKey()
@@ -277,7 +280,8 @@ func TestAlertWorkflowOverHTTP(t *testing.T) {
 
 	code, body, _ = e.do("GET", "/api/v1/alerts/"+key, token, nil)
 	expect(t, "detail", code, 200, body)
-	for _, want := range []string{`"threshold":2`, `"kind":"trade"`, `"side":"sell"`, `"best_bid":999900`, `"trigger_seq":99`} {
+	for _, want := range []string{`"threshold":2`, `"kind":"trade"`, `"side":"sell"`, `"best_bid":999900`, `"trigger_seq":99`,
+		`"trace_id":"4bf92f3577b34da6a3ce929d0e0e4736"`, `"trace_url":"http://jaeger.test:16686/trace/4bf92f3577b34da6a3ce929d0e0e4736"`} {
 		if !strings.Contains(string(body), want) {
 			t.Errorf("detail lacks %s: %s", want, body)
 		}
@@ -371,7 +375,7 @@ func TestStreamDeliversRaisedAndUpdatedAlerts(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := e.views.Raised(ctx, raised); err != nil {
+	if err := e.views.Raised(ctx, raised, nil); err != nil {
 		t.Fatal(err)
 	}
 	key := richAlert(7).GetAlertKey()

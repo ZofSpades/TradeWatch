@@ -57,7 +57,7 @@ curl -s "localhost:8080/api/v1/alerts?abuse_type=spoofing&limit=5" -H "Authoriza
 | `POST /api/v1/auth/login` | public | Exchange a username and password for a token |
 | `GET /api/v1/me` | analyst | The token's user, role and expiry |
 | `GET /api/v1/alerts` | analyst | Alerts, newest detection first. Filters: `status`, `abuse_type`, `symbol`, `account`, `session`, `min_score`. Paged with `limit` and `cursor`. |
-| `GET /api/v1/alerts/{key}` | analyst | One alert with its features and thresholds, the orders and trades involved, the evidence timeline and the price chart |
+| `GET /api/v1/alerts/{key}` | analyst | One alert with its features and thresholds, the orders and trades involved, the evidence timeline and the price chart, and its trace (`trace_id`, and `trace_url` into Jaeger when configured) |
 | `GET /api/v1/alerts/{key}/audit` | analyst | Everything that happened to the alert: raised, status changes and comments, with who and when |
 | `POST /api/v1/alerts/{key}/transitions` | analyst | Move the alert through the workflow |
 | `POST /api/v1/alerts/{key}/comments` | analyst | Add a note to the audit trail |
@@ -187,6 +187,8 @@ admin's name. If marketsim cannot be reached, the API answers `502`.
 | `TW_API_SIM_URL` | `http://localhost:8090` | marketsim's admin server |
 | `TW_API_PROMETHEUS_URL` | none | Prometheus, for `GET /api/v1/system` |
 | `TW_API_GRAFANA_URL` | none | Grafana as a browser reaches it; the System page links to its pipeline dashboard |
+| `TW_API_TRACES_URL` | none | The Jaeger UI as a browser reaches it; alert details link to their trace, and the System page to trace search |
+| `TW_OTLP_ENDPOINT` | none | Where to send traces ([observability.md](observability.md#tracing)) |
 | `TW_API_JWT_SECRET` | required, at least 32 bytes | Token signing secret |
 | `TW_API_TOKEN_TTL` | 1h | Token lifetime |
 | `TW_API_ANALYST_PASSWORD`, `TW_API_ADMIN_PASSWORD` | required, at least 12 bytes | Account passwords |
@@ -208,6 +210,7 @@ admin's name. If marketsim cannot be reached, the API answers `502`.
 | `TestAuthenticationAndRoles` | Login, wrong passwords, missing and invalid tokens, the analyst/admin split, lockout with `Retry-After`, and the simulator proxy (method, path and body forwarded, token not forwarded) |
 | `TestAlertWorkflowOverHTTP` | Paging and filters, evidence detail, every workflow error (`409`, `422`, `400`), comments, the audit trail, stats, the live view, rules and rule history |
 | `TestStreamDeliversRaisedAndUpdatedAlerts` | A raised alert and a status change reach a connected event-stream client |
+| `TestBroadcastContinuesATracedAlertsTrace` | Streaming a traced alert adds a span under the alert sink's store span, which counts the clients reached; an untraced event adds none |
 | `TestUnreachableSimulatorIsABadGateway` | The proxy answers `502` when marketsim is down |
 | `TestSystemSummarizesThePipelineFromPrometheus` and the other `TestSystem…` tests | Against a fake Prometheus: every figure, nulls for missing data, rounded and sorted dead-letter counts, services, history alignment and the five-second cache. Without Prometheus, or when it fails, the answer is a `503` that does not reveal the cause. |
 | `internal/auth` tests | Tampered payloads, `alg: none`, HS512, a wrong secret, wrong audience or issuer, a missing or past expiry, a token issued in the future, unknown users and changed roles are all refused |

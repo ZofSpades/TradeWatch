@@ -76,8 +76,9 @@ make help    # list all targets
 
 Once the stack is up, open the dashboard on `http://localhost:3000` and sign
 in as `analyst` or `admin`. `make env` generated their passwords into `.env`.
-Grafana's pipeline dashboards are on `http://localhost:3001` and Prometheus
-is on `http://localhost:9090`. The API itself listens on
+Grafana's pipeline dashboards are on `http://localhost:3001`, Prometheus is
+on `http://localhost:9090`, and Jaeger, with every alert's trace, is on
+`http://localhost:16686`. The API itself listens on
 `http://localhost:8080`:
 
 ```sh
@@ -99,5 +100,5 @@ curl -s localhost:8080/api/v1/stats -H "Authorization: Bearer $TOKEN" | jq
 - [Dashboard](docs/dashboard.md)
 - [API](docs/api.md)
 - [Delivery semantics, end to end](docs/delivery-semantics.md)
-- [Observability: metrics, dashboards, alerting rules, profiling](docs/observability.md)
+- [Observability: metrics, dashboards, alerting rules, tracing, profiling](docs/observability.md)
 - [Architecture decision records](docs/adr/README.md)

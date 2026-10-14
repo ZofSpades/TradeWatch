@@ -67,7 +67,7 @@ func TestRaisedUpdatedAndRebuild(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := v.Raised(ctx, raised); err != nil {
+	if err := v.Raised(ctx, raised, nil); err != nil {
 		t.Fatal(err)
 	}
 	for i := range 5 {

@@ -70,10 +70,13 @@ func Summarize(a *store.Alert) Summary {
 	}
 }
 
-// Event is one message on the live channel.
+// Event is one message on the live channel. Trace is the W3C traceparent
+// of the span that stored a traced alert, so that the API instances
+// streaming it continue its trace; clients never see it.
 type Event struct {
 	Type  string  `json:"type"`
 	Alert Summary `json:"alert"`
+	Trace string  `json:"trace,omitempty"`
 }
 
 // Counts are the live alert totals.
@@ -108,8 +111,9 @@ func score(a *store.Alert) float64 { return float64(a.FirstSeenAt.UnixMilli()) }
 
 // Raised adds newly stored alerts to the views and publishes them. The
 // caller guarantees each alert is passed once, after Postgres stored it
-// for the first time.
-func (v *Views) Raised(ctx context.Context, alerts []*store.Alert) error {
+// for the first time. traces maps an alert key to the W3C traceparent of
+// the span that stored it, for alerts that are traced; it may be nil.
+func (v *Views) Raised(ctx context.Context, alerts []*store.Alert, traces map[string]string) error {
 	if len(alerts) == 0 {
 		return nil
 	}
@@ -120,7 +124,7 @@ func (v *Views) Raised(ctx context.Context, alerts []*store.Alert) error {
 			if err != nil {
 				return err
 			}
-			ev, err := json.Marshal(Event{Type: EventRaised, Alert: sum})
+			ev, err := json.Marshal(Event{Type: EventRaised, Alert: sum, Trace: traces[a.Key]})
 			if err != nil {
 				return err
 			}

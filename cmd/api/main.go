@@ -24,6 +24,7 @@ import (
 	"github.com/ZofSpades/tradewatch/internal/logging"
 	"github.com/ZofSpades/tradewatch/internal/metrics"
 	"github.com/ZofSpades/tradewatch/internal/store"
+	"github.com/ZofSpades/tradewatch/internal/tracing"
 )
 
 func main() {
@@ -54,6 +55,11 @@ func run(log *slog.Logger) error {
 	}
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
+	_, flush, err := tracing.Init(ctx, config.FromOS(), "api", log)
+	if err != nil {
+		return err
+	}
+	defer flush()
 
 	st, err := store.Open(ctx, cfg.PostgresURL)
 	if err != nil {
@@ -68,7 +74,7 @@ func run(log *slog.Logger) error {
 	if err != nil {
 		return err
 	}
-	if err := srv.SetMonitoring(cfg.PrometheusURL, api.Links{Grafana: cfg.GrafanaURL}); err != nil {
+	if err := srv.SetMonitoring(cfg.PrometheusURL, api.Links{Grafana: cfg.GrafanaURL, Traces: cfg.TracesURL}); err != nil {
 		return fmt.Errorf("TW_API_PROMETHEUS_URL: %w", err)
 	}
 	admin := metrics.NewServer(cfg.HTTPAddr, reg, log)

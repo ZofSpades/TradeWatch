@@ -21,6 +21,7 @@ import (
 	"github.com/ZofSpades/tradewatch/internal/logging"
 	"github.com/ZofSpades/tradewatch/internal/marketsim"
 	"github.com/ZofSpades/tradewatch/internal/metrics"
+	"github.com/ZofSpades/tradewatch/internal/tracing"
 )
 
 func main() {
@@ -41,6 +42,15 @@ func run(log *slog.Logger) error {
 	}
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
+	tcfg, flush, err := tracing.Init(ctx, config.FromOS(), "marketsim", log)
+	if err != nil {
+		return err
+	}
+	defer flush()
+	if tcfg.Enabled() {
+		cfg.TraceSampleRatio = tcfg.EventSampleRatio
+		log.Info("tracing a sample of market events", "ratio", cfg.TraceSampleRatio)
+	}
 
 	cl, err := kafka.NewClient(cfg.Kafka, log,
 		kgo.RecordPartitioner(kgo.StickyKeyPartitioner(nil)),

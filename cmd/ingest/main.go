@@ -21,6 +21,7 @@ import (
 	"github.com/ZofSpades/tradewatch/internal/kafka"
 	"github.com/ZofSpades/tradewatch/internal/logging"
 	"github.com/ZofSpades/tradewatch/internal/metrics"
+	"github.com/ZofSpades/tradewatch/internal/tracing"
 )
 
 func main() {
@@ -41,6 +42,11 @@ func run(log *slog.Logger) error {
 	}
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
+	_, flush, err := tracing.Init(ctx, config.FromOS(), "ingest", log)
+	if err != nil {
+		return err
+	}
+	defer flush()
 
 	reg := metrics.NewRegistry()
 	svc := ingest.NewService(cfg, reg, log)

@@ -553,6 +553,8 @@ components:
             emitted_at: {type: string, format: date-time}
             last_seen_at: {type: string, format: date-time}
             trigger_seq: {type: integer}
+            trace_id: {type: string, description: 'The OpenTelemetry trace of the alert, from the detector through the alert sink to the event stream'}
+            trace_url: {type: string, description: 'The trace in the Jaeger UI, when the API is configured with its address'}
             evidence: {$ref: '#/components/schemas/Evidence'}
     Evidence:
       type: object
@@ -766,6 +768,7 @@ components:
           type: object
           properties:
             grafana: {type: string, description: 'The pipeline dashboard in Grafana, when configured'}
+            traces: {type: string, description: 'Trace search in the Jaeger UI, when configured'}
     SimPace:
       type: object
       required: [mode]

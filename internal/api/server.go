@@ -18,6 +18,7 @@ import (
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 
 	"github.com/ZofSpades/tradewatch/internal/auth"
 	"github.com/ZofSpades/tradewatch/internal/config"
@@ -42,6 +43,7 @@ type Config struct {
 	SimURL          string
 	PrometheusURL   string
 	GrafanaURL      string
+	TracesURL       string
 	JWTSecret       string
 	TokenTTL        time.Duration
 	AnalystPassword string
@@ -61,6 +63,7 @@ func LoadConfig(env *config.Env) (Config, error) {
 		SimURL:          env.String("TW_API_SIM_URL", "http://localhost:8090"),
 		PrometheusURL:   env.String("TW_API_PROMETHEUS_URL", ""),
 		GrafanaURL:      env.String("TW_API_GRAFANA_URL", ""),
+		TracesURL:       env.String("TW_API_TRACES_URL", ""),
 		JWTSecret:       env.Required("TW_API_JWT_SECRET"),
 		TokenTTL:        env.Duration("TW_API_TOKEN_TTL", time.Hour),
 		AnalystPassword: env.Required("TW_API_ANALYST_PASSWORD"),
@@ -181,7 +184,14 @@ func (s *Server) Handler() http.Handler {
 		if rt.role != "" {
 			h = s.authorize(rt.role, h)
 		}
-		mux.Handle(rt.pattern, s.instrument(rt.pattern, h))
+		handler := s.instrument(rt.pattern, h)
+		// Every request is traced, named by its route, except the event
+		// stream, which lasts as long as the client stays connected. Each
+		// streamed alert gets a span of its own in the hub instead.
+		if rt.pattern != "GET /api/v1/stream" {
+			handler = otelhttp.NewHandler(handler, rt.pattern)
+		}
+		mux.Handle(rt.pattern, handler)
 	}
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		problem(w, http.StatusNotFound, "no such endpoint")

@@ -10,6 +10,8 @@ import (
 	"net/url"
 	"strconv"
 	"time"
+
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 )
 
 // promClient is a minimal client of the Prometheus HTTP query API, enough
@@ -27,7 +29,10 @@ func newPromClient(base string) (*promClient, error) {
 	if u.Scheme != "http" && u.Scheme != "https" {
 		return nil, fmt.Errorf("prometheus URL %q: scheme must be http or https", base)
 	}
-	return &promClient{base: u, http: &http.Client{Timeout: 10 * time.Second}}, nil
+	// Queries show in the trace of the API request that made them.
+	transport := otelhttp.NewTransport(http.DefaultTransport,
+		otelhttp.WithSpanNameFormatter(func(_ string, r *http.Request) string { return "prometheus " + r.URL.Path }))
+	return &promClient{base: u, http: &http.Client{Timeout: 10 * time.Second, Transport: transport}}, nil
 }
 
 // promSample is one series of an instant query.

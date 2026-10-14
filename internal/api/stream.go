@@ -11,9 +11,17 @@ import (
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 
 	"github.com/ZofSpades/tradewatch/internal/live"
+	"github.com/ZofSpades/tradewatch/internal/tracing"
 )
+
+// tracer is looked up on use, so it follows whichever provider is installed:
+// OpenTelemetry binds a tracer taken earlier to the first provider only.
+func tracer() trace.Tracer { return otel.Tracer("github.com/ZofSpades/tradewatch/internal/api") }
 
 // hub fans the live channel out to the event streams of this API instance:
 // one Redis subscription per process, any number of clients.
@@ -60,16 +68,32 @@ func (h *hub) run(ctx context.Context) {
 	}
 }
 
+// broadcast hands an event to every connected client. A traced alert's
+// trace continues here, with a span that records how many clients
+// received it.
 func (h *hub) broadcast(ev live.Event) {
+	var span trace.Span
+	if ev.Trace != "" {
+		_, span = tracer().Start(tracing.FromTraceparent(context.Background(), ev.Trace), "stream alert",
+			trace.WithSpanKind(trace.SpanKindConsumer),
+			trace.WithAttributes(attribute.String("tradewatch.alert.key", ev.Alert.Key), attribute.String("tradewatch.live.event", ev.Type)))
+	}
+	sent, dropped := 0, 0
 	h.mu.Lock()
-	defer h.mu.Unlock()
 	for c := range h.subs {
 		select {
 		case c <- ev:
+			sent++
 		default: // too slow: drop the client rather than block everyone
 			delete(h.subs, c)
 			close(c)
+			dropped++
 		}
+	}
+	h.mu.Unlock()
+	if span != nil {
+		span.SetAttributes(attribute.Int("tradewatch.stream.clients", sent), attribute.Int("tradewatch.stream.dropped", dropped))
+		span.End()
 	}
 }
 

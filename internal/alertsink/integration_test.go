@@ -13,6 +13,8 @@ import (
 	"github.com/redis/go-redis/v9"
 	"github.com/twmb/franz-go/pkg/kadm"
 	"github.com/twmb/franz-go/pkg/kgo"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/trace"
 
 	"github.com/ZofSpades/tradewatch/internal/events"
 	"github.com/ZofSpades/tradewatch/internal/events/twpb"
@@ -20,6 +22,7 @@ import (
 	"github.com/ZofSpades/tradewatch/internal/live"
 	"github.com/ZofSpades/tradewatch/internal/store"
 	"github.com/ZofSpades/tradewatch/internal/testutil"
+	"github.com/ZofSpades/tradewatch/internal/tracing"
 )
 
 var quiet = slog.New(slog.DiscardHandler)
@@ -249,5 +252,75 @@ func TestSinkStoresEachAlertOnceAcrossDuplicatesAndRestarts(t *testing.T) {
 	})
 	if reasons["decode_error"] != 1 || reasons["store_rejected"] != 1 {
 		t.Errorf("dead letters by reason: %v", reasons)
+	}
+}
+
+// A traced alert's trace continues through the sink: each delivery gets a
+// store span under the span that raised it, a redelivery is marked as a
+// duplicate, and the live event carries the first store span's context
+// for the API. An untraced alert stays untraced.
+func TestSinkContinuesTheTraceOfEachAlert(t *testing.T) {
+	rec := testutil.RecordSpans(t)
+	e := setup(t)
+	ctx := context.Background()
+	liveEvents, err := e.views.Subscribe(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	tracer := otel.Tracer("test")
+	record := func(a *twpb.Alert, traced bool) (*kgo.Record, trace.SpanContext) {
+		r := &kgo.Record{Topic: e.kcfg.Topics().Alerts, Key: []byte(a.GetAlertKey()), Value: encode(t, a)[0]}
+		if !traced {
+			return r, trace.SpanContext{}
+		}
+		sctx, span := tracer.Start(ctx, "raise R")
+		tracing.Inject(sctx, r)
+		span.End()
+		return r, span.SpanContext()
+	}
+	a, b := testAlert(1), testAlert(2)
+	first, firstRaise := record(a, true)
+	again, againRaise := record(a, true) // a detector redelivered it
+	plain, _ := record(b, false)
+	if err := e.prod.ProduceSync(ctx, first, again, plain).FirstErr(); err != nil {
+		t.Fatal(err)
+	}
+
+	s := e.start(t)
+	waitFor(t, "2 alerts", func() bool { return e.total(t) == 2 })
+	got := map[string]live.Event{}
+	deadline := time.After(time.Minute)
+	for len(got) < 2 {
+		select {
+		case ev := <-liveEvents:
+			got[ev.Alert.Key] = ev
+		case <-deadline:
+			t.Fatalf("live events: %v", got)
+		}
+	}
+	s.stop(t)
+
+	stores := map[trace.SpanID]map[string]string{} // by parent span
+	var firstStore trace.SpanContext
+	for _, sp := range rec.Ended() {
+		if sp.Name() != "store alert" {
+			continue
+		}
+		stores[sp.Parent().SpanID()] = testutil.SpanAttrs(sp)
+		if sp.Parent().SpanID() == firstRaise.SpanID() {
+			firstStore = sp.SpanContext()
+		}
+	}
+	if len(stores) != 2 || stores[firstRaise.SpanID()]["tradewatch.alert.duplicate"] != "false" ||
+		stores[againRaise.SpanID()]["tradewatch.alert.duplicate"] != "true" {
+		t.Fatalf("store spans by raise span: %v", stores)
+	}
+	parent := trace.SpanContextFromContext(tracing.FromTraceparent(ctx, got[a.GetAlertKey()].Trace))
+	if parent.SpanID() != firstStore.SpanID() || parent.TraceID() != firstRaise.TraceID() {
+		t.Errorf("the live event carries %v, want the first store span %v", parent, firstStore)
+	}
+	if got[b.GetAlertKey()].Trace != "" {
+		t.Errorf("an untraced alert's live event carries %q", got[b.GetAlertKey()].Trace)
 	}
 }

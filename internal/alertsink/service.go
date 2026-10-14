@@ -23,6 +23,11 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/twmb/franz-go/pkg/kadm"
 	"github.com/twmb/franz-go/pkg/kgo"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
+	semconv "go.opentelemetry.io/otel/semconv/v1.43.0"
+	"go.opentelemetry.io/otel/trace"
 
 	"github.com/ZofSpades/tradewatch/internal/config"
 	"github.com/ZofSpades/tradewatch/internal/events"
@@ -31,7 +36,12 @@ import (
 	"github.com/ZofSpades/tradewatch/internal/live"
 	"github.com/ZofSpades/tradewatch/internal/metrics"
 	"github.com/ZofSpades/tradewatch/internal/store"
+	"github.com/ZofSpades/tradewatch/internal/tracing"
 )
+
+// tracer is looked up on use, so it follows whichever provider is installed:
+// OpenTelemetry binds a tracer taken earlier to the first provider only.
+func tracer() trace.Tracer { return otel.Tracer("github.com/ZofSpades/tradewatch/internal/alertsink") }
 
 // Config configures the alert sink.
 type Config struct {
@@ -232,14 +242,35 @@ func (s *Service) rebuild(ctx context.Context) {
 	s.log.Info("live views rebuilt from Postgres")
 }
 
-// pending is a decoded alert and the record it came from.
+// pending is a decoded alert and the record it came from, with the span
+// that follows it through the sink when the record carries trace context.
 type pending struct {
 	rec   *kgo.Record
 	alert *twpb.Alert
+	ctx   context.Context
+	span  trace.Span
+	// rejected marks an alert the database refused, which was dead-lettered.
+	rejected bool
 }
 
-func (s *Service) process(ctx context.Context, records []*kgo.Record) error {
+// endSpans finishes the spans of a batch, marking them failed when err is
+// not nil.
+func endSpans(alerts []pending, err error) {
+	for _, p := range alerts {
+		if p.span == nil {
+			continue
+		}
+		if err != nil {
+			p.span.RecordError(err)
+			p.span.SetStatus(codes.Error, "not stored")
+		}
+		p.span.End()
+	}
+}
+
+func (s *Service) process(ctx context.Context, records []*kgo.Record) (err error) {
 	var alerts []pending
+	defer func() { endSpans(alerts, err) }()
 	for _, r := range records {
 		s.m.records.WithLabelValues(r.Topic).Inc()
 		switch r.Topic {
@@ -254,7 +285,15 @@ func (s *Service) process(ctx context.Context, records []*kgo.Record) error {
 				}
 				continue
 			}
-			alerts = append(alerts, pending{r, &a})
+			p := pending{rec: r, alert: &a}
+			if tracing.Traced(r) {
+				p.ctx, p.span = tracer().Start(tracing.Extract(ctx, r), "store alert",
+					trace.WithSpanKind(trace.SpanKindConsumer),
+					trace.WithAttributes(tracing.MessagingAttrs("process", r, true)...),
+					trace.WithAttributes(semconv.MessagingConsumerGroupName(s.cfg.Group),
+						attribute.String("tradewatch.alert.key", a.GetAlertKey())))
+			}
+			alerts = append(alerts, p)
 		case s.topics.RulesAudit:
 			var snap twpb.RuleSetSnapshot
 			if err := events.Unmarshal(r.Value, &snap); err != nil || snap.GetRulesetDigest() == "" {
@@ -294,16 +333,47 @@ func (s *Service) process(ctx context.Context, records []*kgo.Record) error {
 			s.m.latency.Observe(now.Sub(time.Unix(0, pub)).Seconds())
 		}
 	}
+	traces := markStored(alerts, raised)
 	if s.stale {
 		s.rebuild(ctx) // the rebuild includes what was just stored
 		return nil
 	}
-	if err := s.views.Raised(ctx, raised); err != nil {
+	if err := s.views.Raised(ctx, raised, traces); err != nil {
 		s.stale = true
 		s.m.liveErrors.Inc()
 		s.log.Warn("updating the live views failed; they will be rebuilt", "err", err)
 	}
 	return nil
+}
+
+// markStored records on each traced alert's span whether the delivery was
+// stored or absorbed as a duplicate, and returns the trace context to
+// publish with each newly stored alert, by alert key.
+func markStored(alerts []pending, raised []*store.Alert) map[string]string {
+	fresh := make(map[string]bool, len(raised))
+	for _, a := range raised {
+		fresh[a.Key] = true
+	}
+	var traces map[string]string
+	for _, p := range alerts {
+		key := p.alert.GetAlertKey()
+		first := fresh[key]
+		delete(fresh, key) // a second copy in the same batch is a duplicate
+		if p.span == nil || p.rejected {
+			continue
+		}
+		p.span.SetAttributes(attribute.Bool("tradewatch.alert.duplicate", !first))
+		if !first {
+			p.span.AddEvent("duplicate delivery absorbed: the alert key was already stored")
+			continue
+		}
+		p.span.AddEvent("stored in Postgres")
+		if traces == nil {
+			traces = map[string]string{}
+		}
+		traces[key] = tracing.Traceparent(p.ctx)
+	}
+	return traces
 }
 
 // storeAlerts stores a batch in one transaction, retrying transient
@@ -335,7 +405,8 @@ func (s *Service) storeAlerts(ctx context.Context, alerts []pending) ([]*store.A
 	}
 	s.log.Warn("database rejected an alert batch; storing alerts one by one", "alerts", len(alerts), "err", err)
 	raised = nil
-	for _, p := range alerts {
+	for i := range alerts {
+		p := &alerts[i]
 		var one []*store.Alert
 		var dup int
 		err := s.withRetry(ctx, func() error {
@@ -352,6 +423,11 @@ func (s *Service) storeAlerts(ctx context.Context, alerts []pending) ([]*store.A
 		default:
 			if err := s.deadLetter(ctx, p.rec, "store_rejected", err); err != nil {
 				return nil, err
+			}
+			p.rejected = true
+			if p.span != nil {
+				p.span.RecordError(err)
+				p.span.SetStatus(codes.Error, "rejected by the database; dead-lettered")
 			}
 		}
 	}
