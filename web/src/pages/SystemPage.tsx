@@ -81,6 +81,11 @@ export function SystemPage() {
             Pipeline dashboard in Grafana ↗
           </a>
         )}
+        {status?.links.traces && (
+          <a href={status.links.traces} target="_blank" rel="noopener noreferrer">
+            Traces in Jaeger ↗
+          </a>
+        )}
       </div>
       {error && (
         <p className="error" role="alert">

@@ -188,6 +188,20 @@ export function AlertDetail({ alertKey, onChanged }: Props) {
             {fmtDateTime(alert.detected_at)}, stored {fmtAgo(alert.first_seen_at)}
             {alert.deliveries > 1 && ` · delivered ${alert.deliveries} times, duplicates absorbed`}
           </dd>
+          {alert.trace_id && (
+            <>
+              <dt>Trace</dt>
+              <dd>
+                {alert.trace_url ? (
+                  <a href={alert.trace_url} target="_blank" rel="noopener noreferrer">
+                    Open in Jaeger ↗
+                  </a>
+                ) : (
+                  <code>{alert.trace_id}</code>
+                )}
+              </dd>
+            </>
+          )}
         </dl>
         <div className="table-scroll">
           <table className="timeline">

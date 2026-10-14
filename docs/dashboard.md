@@ -34,7 +34,9 @@ Selecting an alert opens its detail beside the queue:
   - the window, in simulated market time;
   - when the alert was stored, and how many times it was delivered, if
     duplicates were absorbed;
-  - the timeline of orders and trades, with their roles.
+  - the timeline of orders and trades, with their roles;
+  - a link to the alert's trace in Jaeger, which follows it from the
+    detector through the alert sink to the live feed.
 - **History:** who raised, moved and commented on the alert, and when,
   including the reasons given.
 - **Workflow:** triage, escalate, dismiss and comment. The buttons follow
@@ -58,8 +60,8 @@ source.
 - **Sparklines** of the last 30 minutes.
 
 If Prometheus cannot be reached, the page says so and keeps the last
-figures it had. A link opens the full pipeline dashboard in Grafana
-([observability.md](observability.md)).
+figures it had. Links open the full pipeline dashboard in Grafana and the
+trace search in Jaeger ([observability.md](observability.md)).
 
 **Simulator** (admins only). The session's state and market time. From here
 an admin can inject a labelled abuse episode now (optionally on a chosen
@@ -130,7 +132,7 @@ dialog is open.
 
 | Command | What it checks |
 | --- | --- |
-| `make web-test` (in Docker; also part of `make test`) | The generated API types match `openapi.yaml`, the app type-checks, Vitest component tests pass, and the production build succeeds. The tests cover parsing the event stream (including events split across chunks), client errors and the session ending on 401, the router, keyboard navigation of the queue, live arrivals and filters, and the full workflow (required reasons, Escape, button states). They also cover the chart, sign-in, and the System page (every figure, missing data, a failing refresh that keeps the last figures). |
+| `make web-test` (in Docker; also part of `make test`) | The generated API types match `openapi.yaml`, the app type-checks, Vitest component tests pass, and the production build succeeds. The tests cover parsing the event stream (including events split across chunks), client errors and the session ending on 401, the router, keyboard navigation of the queue, live arrivals and filters, and the full workflow (required reasons, Escape, button states). They also cover the chart, sign-in, the link from an alert to its trace, and the System page (every figure, missing data, a failing refresh that keeps the last figures). |
 | `make web-e2e` (needs `make up`) | Playwright drives the running stack in Chromium. An analyst signs in and the live feed connects through nginx. The analyst triages and then dismisses an alert with the keyboard; the dismissal asks for a reason. The System page shows live rates from Prometheus and every service up, including both detector replicas. An admin injects a quote-stuffing burst through the API, and its alert arrives live in the open queue. The simulator page schedules a scenario, and no page logs an error. This changes data. |
 | `make screenshots` (needs `make up`) | Captures the screens into `docs/images` |
 

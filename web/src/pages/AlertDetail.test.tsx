@@ -33,6 +33,19 @@ describe("AlertDetail", () => {
     expect(screen.getByText("genuine fill")).toBeInTheDocument();
   });
 
+  it("links the alert to its trace", async () => {
+    const traceId = "4bf92f3577b34da6a3ce929d0e0e4736";
+    fakeApi({
+      [`GET /api/v1/alerts/${KEY}`]: detail(1, { trace_id: traceId, trace_url: `http://localhost:16686/trace/${traceId}` }),
+      [`GET /api/v1/alerts/${KEY}/audit`]: { entries: [] },
+    });
+    renderWithSession(<AlertDetail alertKey={KEY} onChanged={vi.fn()} />);
+    expect(await screen.findByRole("link", { name: /Open in Jaeger/ })).toHaveAttribute(
+      "href",
+      `http://localhost:16686/trace/${traceId}`,
+    );
+  });
+
   it("walks the alert through the workflow, requiring a reason to dismiss", async () => {
     const { calls } = workflowApi();
     const onChanged = vi.fn();

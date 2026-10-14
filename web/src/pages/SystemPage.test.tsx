@@ -40,7 +40,7 @@ function status(): SystemStatus {
       detector_lag: steps(() => null),
       event_to_detector_p95: steps(() => 0.01),
     },
-    links: { grafana: "http://localhost:3001/d/tradewatch-pipeline" },
+    links: { grafana: "http://localhost:3001/d/tradewatch-pipeline", traces: "http://localhost:16686/search" },
   };
 }
 
@@ -80,6 +80,7 @@ describe("SystemPage", () => {
       "href",
       "http://localhost:3001/d/tradewatch-pipeline",
     );
+    expect(screen.getByRole("link", { name: /Traces in Jaeger/ })).toHaveAttribute("href", "http://localhost:16686/search");
   });
 
   it("explains when metrics are unavailable", async () => {
