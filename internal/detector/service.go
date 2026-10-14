@@ -158,7 +158,7 @@ func newServiceMetrics(reg prometheus.Registerer) *serviceMetrics {
 		abandoned:  c("abandoned_symbols_total", "(session, symbol) states dropped after their session went idle without closing."),
 		decode:     c("decode_errors_total", "market_events records that could not be decoded."),
 		latency: prometheus.NewHistogram(prometheus.HistogramOpts{Namespace: ns, Subsystem: sub, Name: "event_latency_seconds",
-			Help: "Wall time from marketsim publishing an event to the detector processing it.", Buckets: prometheus.ExponentialBuckets(0.0005, 2, 16)}),
+			Help: "Wall time from marketsim publishing an event to the detector processing it.", Buckets: metrics.LatencyBuckets}),
 		process: prometheus.NewHistogram(prometheus.HistogramOpts{Namespace: ns, Subsystem: sub, Name: "process_seconds",
 			Help: "Time to run one event through every detector.", Buckets: prometheus.ExponentialBuckets(1e-6, 2, 16)}),
 		lag:      g("consumer_lag_records", "Records between the processing position and the high watermark, over owned partitions."),

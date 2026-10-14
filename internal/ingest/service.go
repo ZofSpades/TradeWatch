@@ -111,7 +111,7 @@ func newServiceMetrics(reg prometheus.Registerer) *serviceMetrics {
 		commitTime: prometheus.NewHistogram(prometheus.HistogramOpts{Namespace: ns, Subsystem: sub, Name: "commit_duration_seconds",
 			Help: "Time to flush outputs and commit offsets.", Buckets: prometheus.ExponentialBuckets(0.001, 2, 14)}),
 		latency: prometheus.NewHistogram(prometheus.HistogramOpts{Namespace: ns, Subsystem: sub, Name: "event_latency_seconds",
-			Help: "Wall-clock time from marketsim publishing an event to ingest releasing it.", Buckets: prometheus.ExponentialBuckets(0.0005, 2, 16)}),
+			Help: "Wall-clock time from marketsim publishing an event to ingest releasing it.", Buckets: metrics.LatencyBuckets}),
 	}
 	reg.MustRegister(m.records, m.dlq, m.released, m.gaps, m.duplicates, m.abandoned, m.held, m.paused, m.lag, m.assigned,
 		m.commits, m.commitTime, m.latency)

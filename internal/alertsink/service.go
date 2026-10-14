@@ -100,7 +100,7 @@ func newServiceMetrics(reg prometheus.Registerer) *serviceMetrics {
 			Help: "Time to store one batch in Postgres.", Buckets: prometheus.ExponentialBuckets(0.0005, 2, 16)}),
 		latency: prometheus.NewHistogram(prometheus.HistogramOpts{Namespace: ns, Subsystem: sub, Name: "pipeline_latency_seconds",
 			Help:    "Wall time from marketsim publishing the event that triggered an alert to the alert being stored.",
-			Buckets: prometheus.ExponentialBuckets(0.001, 2, 16)}),
+			Buckets: metrics.LatencyBuckets}),
 		liveErrors: c("live_errors_total", "Failed updates of the Redis live views."),
 		rebuilds:   c("live_rebuilds_total", "Rebuilds of the Redis live views from Postgres."),
 		commits: prometheus.NewCounterVec(prometheus.CounterOpts{Namespace: ns, Subsystem: sub, Name: "commits_total",

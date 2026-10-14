@@ -30,6 +30,17 @@ import (
 // Namespace prefixes every TradeWatch metric name.
 const Namespace = "tradewatch"
 
+// LatencyBuckets are the bucket bounds, in seconds, of the histograms that
+// time an event's way through the pipeline. Neighbouring bounds are at most
+// 1.5 times apart (doubling buckets would put a quantile anywhere within a
+// factor of two), and they are round numbers, so dashboards stay readable.
+var LatencyBuckets = []float64{
+	0.0005, 0.001, 0.0015, 0.002, 0.003, 0.005, 0.0075,
+	0.01, 0.015, 0.02, 0.03, 0.05, 0.075,
+	0.1, 0.15, 0.2, 0.3, 0.5, 0.75,
+	1, 1.5, 2, 3, 5, 7.5, 10, 15, 20, 30,
+}
+
 // NewRegistry returns a registry with the Go runtime and process collectors
 // registered.
 func NewRegistry() *prometheus.Registry {
