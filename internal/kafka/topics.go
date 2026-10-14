@@ -20,7 +20,7 @@ type Topics struct {
 
 	// Reference data (accounts, instruments, sessions); compacted.
 	RefData string
-	// Labels for injected abuse; read only by the evaluator.
+	// Labels for injected abuse, for scoring only; detectors never read them.
 	GroundTruth string
 	// Detector output.
 	Alerts string

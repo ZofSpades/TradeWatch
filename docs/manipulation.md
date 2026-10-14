@@ -4,9 +4,10 @@ The simulator can inject five kinds of market abuse into otherwise normal
 sessions. Every injected episode produces a **ground-truth label**: which
 accounts did it, on which symbol and when, and exactly which orders and
 trades it consisted of. Labels go to the `groundtruth` topic, and into
-session recordings, as separate entries. Only the evaluator reads them. The
-detectors never see them. They work from the same market data any
-participant could observe, plus reference data.
+session recordings, as separate entries. They are for scoring only: the
+evaluator and the replay tool use them, and the detectors never see them.
+The detectors work from the same market data any participant could observe,
+plus reference data.
 
 All of this is synthetic. The patterns are simplified renditions of
 behaviour described in market-abuse rules (for example, EU MAR Annex I).

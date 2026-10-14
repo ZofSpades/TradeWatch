@@ -190,8 +190,8 @@ func (EvidenceKind) EnumDescriptor() ([]byte, []int) {
 }
 
 // GroundTruthLabel describes one abusive episode injected by the simulator.
-// Labels are published on the `groundtruth` topic, which only the evaluator
-// reads; detectors never see them.
+// Labels are published on the `groundtruth` topic and into recordings, for
+// scoring only; detectors never see them.
 type GroundTruthLabel struct {
 	state     protoimpl.MessageState `protogen:"open.v1"`
 	LabelId   string                 `protobuf:"bytes,1,opt,name=label_id,json=labelId,proto3" json:"label_id,omitempty"`

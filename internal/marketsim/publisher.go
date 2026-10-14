@@ -230,7 +230,7 @@ func (p *publisher) Emit(sym *sim.Symbol, ev *ob.Event) error {
 }
 
 // Label implements sim.LabelEmitter: ground truth goes to its own topic,
-// which only the evaluator reads, and into the recording.
+// which no detector reads, and into the recording.
 func (p *publisher) Label(l *twpb.GroundTruthLabel) error {
 	if err := p.failure(); err != nil {
 		return err

@@ -126,7 +126,7 @@ type Emitter interface {
 
 // LabelEmitter is implemented by emitters that also receive the ground-truth
 // labels of injected abuse. Labels never travel with market events: they are
-// published separately, for the evaluator only.
+// published separately, for scoring only.
 type LabelEmitter interface {
 	Label(l *twpb.GroundTruthLabel) error
 }

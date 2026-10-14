@@ -16,8 +16,8 @@ enum AbuseType {
 }
 
 // GroundTruthLabel describes one abusive episode injected by the simulator.
-// Labels are published on the `groundtruth` topic, which only the evaluator
-// reads; detectors never see them.
+// Labels are published on the `groundtruth` topic and into recordings, for
+// scoring only; detectors never see them.
 message GroundTruthLabel {
   string label_id = 1;
   string session_id = 2;
