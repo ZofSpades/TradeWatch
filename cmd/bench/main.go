@@ -30,7 +30,7 @@ func main() {
 }
 
 func run() error {
-	rates := flag.String("rates", "1000,2000,5000,10000,20000,30000,40000,50000,60000,80000,100000",
+	rates := flag.String("rates", "1000,2000,5000,10000,20000,30000,40000,50000,60000,80000,100000,120000,150000,200000",
 		"event rates to offer, in events per second, in order; the run stops at the first one the pipeline does not sustain")
 	warmup := flag.Duration("warmup", 20*time.Second, "how long each rate runs before it is measured")
 	measure := flag.Duration("measure", 60*time.Second, "length of each measurement window")
