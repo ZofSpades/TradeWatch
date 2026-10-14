@@ -148,6 +148,39 @@ services:
       timeout: 3s
       retries: 10
 
+  # Applies the database migrations once and exits; the services that use
+  # Postgres start after it succeeds.
+  migrate:
+    <<: *backend
+    command: ["alertsink", "migrate"]
+    restart: "no"
+    environment:
+      TW_POSTGRES_URL: &postgres-url postgres://tradewatch:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is not set - run `make env`}@postgres:5432/tradewatch?sslmode=disable
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  alertsink:
+    <<: *backend
+    command: ["alertsink"]
+    environment:
+      TW_KAFKA_BROKERS: kafka:9092
+      TW_POSTGRES_URL: *postgres-url
+      TW_REDIS_ADDR: redis:6379
+      TW_HTTP_ADDR: ":8093"
+    depends_on:
+      kafka:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "/usr/local/bin/alertsink", "healthcheck"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
   # Go toolchain used by `make test`, `make lint` and `make proto`, so that a
   # machine with only Docker can run them. Not started by `docker compose up`.
   toolbox:
