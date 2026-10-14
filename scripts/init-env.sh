@@ -27,3 +27,6 @@ ensure() {
 }
 
 ensure POSTGRES_PASSWORD "$(rand_hex 16)"
+ensure TW_API_JWT_SECRET "$(rand_hex 32)"
+ensure TW_API_ANALYST_PASSWORD "$(rand_hex 12)"
+ensure TW_API_ADMIN_PASSWORD "$(rand_hex 12)"

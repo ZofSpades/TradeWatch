@@ -181,6 +181,31 @@ services:
       timeout: 3s
       retries: 10
 
+  api:
+    <<: *backend
+    command: ["api"]
+    environment:
+      TW_POSTGRES_URL: *postgres-url
+      TW_REDIS_ADDR: redis:6379
+      TW_API_ADDR: ":8080"
+      TW_API_SIM_URL: http://marketsim:8090
+      TW_API_JWT_SECRET: ${TW_API_JWT_SECRET:?TW_API_JWT_SECRET is not set - run `make env`}
+      TW_API_ANALYST_PASSWORD: ${TW_API_ANALYST_PASSWORD:?TW_API_ANALYST_PASSWORD is not set - run `make env`}
+      TW_API_ADMIN_PASSWORD: ${TW_API_ADMIN_PASSWORD:?TW_API_ADMIN_PASSWORD is not set - run `make env`}
+      TW_HTTP_ADDR: ":8094"
+    ports:
+      - "127.0.0.1:8080:8080"
+    depends_on:
+      redis:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "/usr/local/bin/api", "healthcheck"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
   # Go toolchain used by `make test`, `make lint` and `make proto`, so that a
   # machine with only Docker can run them. Not started by `docker compose up`.
   toolbox:

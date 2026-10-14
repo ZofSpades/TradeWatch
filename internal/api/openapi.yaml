@@ -1,0 +1,688 @@
+openapi: 3.0.3
+info:
+  title: TradeWatch API
+  version: 1.0.0
+  description: |
+    Alerts raised by TradeWatch's market-abuse detectors, their analyst
+    workflow and audit trail, the rule versions in force, a live event
+    stream, and (for admins) control of the market simulator.
+
+    All market data behind these alerts is simulated.
+
+    Authenticate with `POST /api/v1/auth/login` and send the returned token
+    as `Authorization: Bearer <token>`. Analysts can read alerts and work
+    them; admins can also control the simulator. Errors use RFC 7807
+    problem details.
+
+    Times are RFC 3339 in UTC. Event times (`window_start`, `detected_at`,
+    timeline and chart times) are simulated market time; `first_seen_at`
+    and `status_changed_at` are wall-clock times. Prices are integers in
+    units of 1/10,000 of the quote currency.
+servers:
+  - url: /
+security:
+  - bearer: []
+tags:
+  - name: auth
+  - name: alerts
+  - name: rules
+  - name: live
+  - name: simulator
+paths:
+  /api/v1/auth/login:
+    post:
+      tags: [auth]
+      summary: Exchange a username and password for an access token
+      operationId: login
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/LoginRequest'}
+      responses:
+        '200':
+          description: Logged in
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/LoginResponse'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '429':
+          description: Too many failed logins for this username
+          headers:
+            Retry-After:
+              schema: {type: integer}
+              description: Seconds to wait before trying again
+          content:
+            application/problem+json:
+              schema: {$ref: '#/components/schemas/Problem'}
+  /api/v1/me:
+    get:
+      tags: [auth]
+      summary: The authenticated user
+      operationId: me
+      responses:
+        '200':
+          description: The token's user
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Me'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+  /api/v1/alerts:
+    get:
+      tags: [alerts]
+      summary: List alerts, newest detection first
+      operationId: listAlerts
+      parameters:
+        - {name: status, in: query, schema: {$ref: '#/components/schemas/Status'}}
+        - {name: abuse_type, in: query, schema: {$ref: '#/components/schemas/AbuseType'}}
+        - {name: symbol, in: query, schema: {type: string}}
+        - {name: account, in: query, description: Alerts involving this account, schema: {type: string}}
+        - {name: session, in: query, schema: {type: string}}
+        - {name: min_score, in: query, schema: {type: number, minimum: 0, maximum: 100}}
+        - {name: limit, in: query, schema: {type: integer, minimum: 1, maximum: 500, default: 50}}
+        - {name: cursor, in: query, description: The next_cursor of the previous page, schema: {type: string}}
+      responses:
+        '200':
+          description: One page of alerts
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/AlertPage'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+  /api/v1/alerts/{key}:
+    parameters:
+      - {$ref: '#/components/parameters/AlertKey'}
+    get:
+      tags: [alerts]
+      summary: One alert with its full evidence
+      operationId: getAlert
+      responses:
+        '200':
+          description: The alert
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/AlertDetail'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '404': {$ref: '#/components/responses/NotFound'}
+  /api/v1/alerts/{key}/audit:
+    parameters:
+      - {$ref: '#/components/parameters/AlertKey'}
+    get:
+      tags: [alerts]
+      summary: The alert's history, oldest first
+      operationId: getAlertAudit
+      responses:
+        '200':
+          description: The audit trail
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/AuditTrail'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '404': {$ref: '#/components/responses/NotFound'}
+  /api/v1/alerts/{key}/transitions:
+    parameters:
+      - {$ref: '#/components/parameters/AlertKey'}
+    post:
+      tags: [alerts]
+      summary: Move the alert through the workflow
+      description: |
+        open → triaged → escalated or dismissed. Escalating and dismissing
+        require a note giving the reason.
+      operationId: transitionAlert
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/TransitionRequest'}
+      responses:
+        '200':
+          description: The alert after the change
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/AlertSummary'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409':
+          description: The workflow does not allow this change from the alert's current status
+          content:
+            application/problem+json:
+              schema: {$ref: '#/components/schemas/Problem'}
+        '422':
+          description: A required note is missing or too long
+          content:
+            application/problem+json:
+              schema: {$ref: '#/components/schemas/Problem'}
+  /api/v1/alerts/{key}/comments:
+    parameters:
+      - {$ref: '#/components/parameters/AlertKey'}
+    post:
+      tags: [alerts]
+      summary: Add a note to the alert's history
+      operationId: commentAlert
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/CommentRequest'}
+      responses:
+        '201':
+          description: The recorded comment
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/AuditEntry'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '422':
+          description: The note is empty or too long
+          content:
+            application/problem+json:
+              schema: {$ref: '#/components/schemas/Problem'}
+  /api/v1/stats:
+    get:
+      tags: [alerts]
+      summary: Alert totals by status, abuse type and symbol
+      operationId: getStats
+      responses:
+        '200':
+          description: Totals from the alert store
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Stats'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+  /api/v1/live:
+    get:
+      tags: [live]
+      summary: The live view, with running totals and the most recently stored alerts
+      operationId: getLive
+      parameters:
+        - {name: limit, in: query, schema: {type: integer, minimum: 1, maximum: 500, default: 50}}
+      responses:
+        '200':
+          description: The live view
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/LiveView'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '503': {$ref: '#/components/responses/Unavailable'}
+  /api/v1/stream:
+    get:
+      tags: [live]
+      summary: Server-sent events for alerts as they are raised and updated
+      description: |
+        A `text/event-stream` with `alert.raised` and `alert.updated` events,
+        each carrying an AlertSummary as JSON data, and a keep-alive comment
+        every 15 seconds. Send the token in the Authorization header (use a
+        fetch-based client rather than EventSource).
+      operationId: stream
+      responses:
+        '200':
+          description: The event stream
+          content:
+            text/event-stream:
+              schema: {type: string}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '503': {$ref: '#/components/responses/Unavailable'}
+  /api/v1/rules:
+    get:
+      tags: [rules]
+      summary: The rule set most recently loaded by a detector
+      operationId: getRules
+      responses:
+        '200':
+          description: The current rule set
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/RuleSet'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '404': {$ref: '#/components/responses/NotFound'}
+  /api/v1/rules/{id}:
+    parameters:
+      - {name: id, in: path, required: true, schema: {type: string}, example: TW-WASH-001}
+    get:
+      tags: [rules]
+      summary: Every version of a rule that a detector has loaded, newest first
+      operationId: getRuleHistory
+      responses:
+        '200':
+          description: The rule's versions, with their sources
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/RuleHistory'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '404': {$ref: '#/components/responses/NotFound'}
+  /api/v1/sim/status:
+    get:
+      tags: [simulator]
+      summary: The simulator's state (admin)
+      operationId: simStatus
+      responses:
+        '200': {$ref: '#/components/responses/SimStatus'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '502': {$ref: '#/components/responses/BadGateway'}
+  /api/v1/sim/start:
+    post:
+      tags: [simulator]
+      summary: Start sessions (admin)
+      operationId: simStart
+      responses:
+        '202': {$ref: '#/components/responses/SimStatus'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '502': {$ref: '#/components/responses/BadGateway'}
+  /api/v1/sim/stop:
+    post:
+      tags: [simulator]
+      summary: Stop the running session (admin)
+      operationId: simStop
+      responses:
+        '202': {$ref: '#/components/responses/SimStatus'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '502': {$ref: '#/components/responses/BadGateway'}
+  /api/v1/sim/pace:
+    put:
+      tags: [simulator]
+      summary: Change the publishing pace (admin)
+      operationId: simPace
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/SimPace'}
+      responses:
+        '200': {$ref: '#/components/responses/SimStatus'}
+        '400': {$ref: '#/components/responses/SimError'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '502': {$ref: '#/components/responses/BadGateway'}
+  /api/v1/sim/injection:
+    get:
+      tags: [simulator]
+      summary: The abuse injection rates (admin)
+      operationId: simInjection
+      responses:
+        '200':
+          description: Episodes per symbol-hour, per abuse type
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/SimInjection'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '502': {$ref: '#/components/responses/BadGateway'}
+    put:
+      tags: [simulator]
+      summary: Change the abuse injection rates (admin)
+      operationId: simSetInjection
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/SimInjection'}
+      responses:
+        '200': {$ref: '#/components/responses/SimStatus'}
+        '400': {$ref: '#/components/responses/SimError'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '502': {$ref: '#/components/responses/BadGateway'}
+  /api/v1/sim/scenarios:
+    get:
+      tags: [simulator]
+      summary: The scenarios that can be triggered (admin)
+      operationId: simScenarios
+      responses:
+        '200':
+          description: Scenario names
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [scenarios]
+                properties:
+                  scenarios: {type: array, items: {type: string}}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '502': {$ref: '#/components/responses/BadGateway'}
+    post:
+      tags: [simulator]
+      summary: Inject a labelled abuse episode into the running session now (admin)
+      operationId: simTrigger
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/SimScenario'}
+      responses:
+        '202':
+          description: The episode was scheduled
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  scenario: {type: string}
+                  symbol: {type: string}
+                  status: {type: string}
+        '400': {$ref: '#/components/responses/SimError'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '409': {$ref: '#/components/responses/SimError'}
+        '502': {$ref: '#/components/responses/BadGateway'}
+  /api/v1/openapi.yaml:
+    get:
+      tags: [auth]
+      summary: This document
+      operationId: openapi
+      security: []
+      responses:
+        '200':
+          description: The OpenAPI document
+          content:
+            application/yaml:
+              schema: {type: object}
+components:
+  securitySchemes:
+    bearer:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  parameters:
+    AlertKey:
+      name: key
+      in: path
+      required: true
+      schema: {type: string, pattern: '^[0-9a-f]{32}$'}
+  responses:
+    BadRequest:
+      description: The request is malformed
+      content:
+        application/problem+json:
+          schema: {$ref: '#/components/schemas/Problem'}
+    Unauthorized:
+      description: Missing, invalid or expired credentials
+      content:
+        application/problem+json:
+          schema: {$ref: '#/components/schemas/Problem'}
+    Forbidden:
+      description: The user's role does not allow this
+      content:
+        application/problem+json:
+          schema: {$ref: '#/components/schemas/Problem'}
+    NotFound:
+      description: No such resource
+      content:
+        application/problem+json:
+          schema: {$ref: '#/components/schemas/Problem'}
+    Unavailable:
+      description: A dependency (Redis) is unavailable
+      content:
+        application/problem+json:
+          schema: {$ref: '#/components/schemas/Problem'}
+    BadGateway:
+      description: The simulator could not be reached
+      content:
+        application/problem+json:
+          schema: {$ref: '#/components/schemas/Problem'}
+    SimStatus:
+      description: The simulator's state after the call
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/SimStatus'}
+    SimError:
+      description: The simulator refused the request
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [error]
+            properties:
+              error: {type: string}
+  schemas:
+    Problem:
+      type: object
+      required: [type, title, status]
+      properties:
+        type: {type: string}
+        title: {type: string}
+        status: {type: integer}
+        detail: {type: string}
+    LoginRequest:
+      type: object
+      required: [username, password]
+      additionalProperties: false
+      properties:
+        username: {type: string, minLength: 1}
+        password: {type: string, minLength: 1}
+    LoginResponse:
+      type: object
+      required: [access_token, token_type, expires_in, username, role]
+      properties:
+        access_token: {type: string}
+        token_type: {type: string, enum: [Bearer]}
+        expires_in: {type: integer, description: Seconds until the token expires}
+        username: {type: string}
+        role: {$ref: '#/components/schemas/Role'}
+    Me:
+      type: object
+      required: [username, role, expires_at]
+      properties:
+        username: {type: string}
+        role: {$ref: '#/components/schemas/Role'}
+        expires_at: {type: string, format: date-time}
+    Role:
+      type: string
+      enum: [analyst, admin]
+    Status:
+      type: string
+      enum: [open, triaged, escalated, dismissed]
+    AbuseType:
+      type: string
+      enum: [wash_trading, spoofing, momentum_ignition, quote_stuffing, marking_the_close]
+    Severity:
+      type: string
+      enum: [low, medium, high, critical]
+    AlertSummary:
+      type: object
+      required: [key, session_id, symbol, abuse_type, severity, score, rule_id, rule_version, taxonomy_code,
+        account_ids, beneficial_owner_ids, window_start, window_end, detected_at, explanation, status,
+        deliveries, first_seen_at, status_changed_at]
+      properties:
+        key: {type: string, description: Deterministic idempotency key of the alert}
+        session_id: {type: string}
+        symbol: {type: string}
+        abuse_type: {$ref: '#/components/schemas/AbuseType'}
+        severity: {$ref: '#/components/schemas/Severity'}
+        score: {type: number, minimum: 0, maximum: 100, description: 'Triage order: 50 at the thresholds, 100 at twice past every one; not a probability'}
+        rule_id: {type: string}
+        rule_version: {type: integer}
+        taxonomy_code: {type: string}
+        account_ids: {type: array, items: {type: string}}
+        beneficial_owner_ids: {type: array, items: {type: string}}
+        window_start: {type: string, format: date-time}
+        window_end: {type: string, format: date-time}
+        detected_at: {type: string, format: date-time}
+        explanation: {type: string}
+        status: {$ref: '#/components/schemas/Status'}
+        deliveries: {type: integer, description: Times the alert was delivered; above 1 means duplicates were absorbed}
+        first_seen_at: {type: string, format: date-time}
+        status_changed_at: {type: string, format: date-time}
+    AlertPage:
+      type: object
+      required: [alerts]
+      properties:
+        alerts: {type: array, items: {$ref: '#/components/schemas/AlertSummary'}}
+        next_cursor: {type: string, description: Absent on the last page}
+    AlertDetail:
+      allOf:
+        - $ref: '#/components/schemas/AlertSummary'
+        - type: object
+          required: [detector, rule_digest, last_seen_at, evidence]
+          properties:
+            detector: {type: string}
+            rule_digest: {type: string}
+            detector_instance: {type: string}
+            emitted_at: {type: string, format: date-time}
+            last_seen_at: {type: string, format: date-time}
+            trigger_seq: {type: integer}
+            evidence: {$ref: '#/components/schemas/Evidence'}
+    Evidence:
+      type: object
+      required: [order_ids, trade_ids, features, timeline, price_context]
+      properties:
+        order_ids: {type: array, items: {type: integer}}
+        trade_ids: {type: array, items: {type: integer}}
+        features: {type: array, items: {$ref: '#/components/schemas/Feature'}}
+        timeline: {type: array, items: {$ref: '#/components/schemas/EvidenceEvent'}}
+        price_context: {type: array, items: {$ref: '#/components/schemas/PricePoint'}}
+    Feature:
+      type: object
+      required: [name, value, breached]
+      properties:
+        name: {type: string}
+        value: {type: number}
+        threshold: {type: number}
+        op: {type: string, enum: ['>=', '<='], description: Absent for informational features}
+        breached: {type: boolean}
+        unit: {type: string}
+    EvidenceEvent:
+      type: object
+      required: [time, kind, role]
+      properties:
+        time: {type: string, format: date-time}
+        seq: {type: integer}
+        kind: {type: string, enum: [order, replace, cancel, trade]}
+        order_id: {type: integer}
+        trade_id: {type: integer}
+        account_id: {type: string}
+        counterparty_account_id: {type: string}
+        side: {type: string, enum: [buy, sell]}
+        price: {type: integer}
+        quantity: {type: integer}
+        role: {type: string}
+    PricePoint:
+      type: object
+      required: [time]
+      properties:
+        time: {type: string, format: date-time}
+        last_price: {type: integer}
+        best_bid: {type: integer}
+        best_ask: {type: integer}
+        bid_size: {type: integer}
+        ask_size: {type: integer}
+    AuditEntry:
+      type: object
+      required: [id, at, actor, action, note]
+      properties:
+        id: {type: integer}
+        at: {type: string, format: date-time}
+        actor: {type: string}
+        action: {type: string, enum: [raised, transition, comment]}
+        from_status: {$ref: '#/components/schemas/Status'}
+        to_status: {$ref: '#/components/schemas/Status'}
+        note: {type: string}
+    AuditTrail:
+      type: object
+      required: [entries]
+      properties:
+        entries: {type: array, items: {$ref: '#/components/schemas/AuditEntry'}}
+    TransitionRequest:
+      type: object
+      required: [to]
+      additionalProperties: false
+      properties:
+        to: {$ref: '#/components/schemas/Status'}
+        note: {type: string, maxLength: 4000}
+    CommentRequest:
+      type: object
+      required: [note]
+      additionalProperties: false
+      properties:
+        note: {type: string, minLength: 1, maxLength: 4000}
+    Counts:
+      type: object
+      additionalProperties: {type: integer}
+    Stats:
+      type: object
+      required: [total, by_status, by_abuse_type, by_symbol]
+      properties:
+        total: {type: integer}
+        by_status: {$ref: '#/components/schemas/Counts'}
+        by_abuse_type: {$ref: '#/components/schemas/Counts'}
+        by_symbol: {$ref: '#/components/schemas/Counts'}
+    LiveView:
+      type: object
+      required: [counts, recent]
+      properties:
+        counts:
+          type: object
+          required: [total, by_abuse_type, by_symbol]
+          properties:
+            total: {type: integer}
+            by_abuse_type: {$ref: '#/components/schemas/Counts'}
+            by_symbol: {$ref: '#/components/schemas/Counts'}
+        recent: {type: array, items: {$ref: '#/components/schemas/AlertSummary'}}
+    RuleVersion:
+      type: object
+      required: [rule_id, version, digest, detector, name, taxonomy_code, enabled, first_seen_at, version_reused]
+      properties:
+        rule_id: {type: string}
+        version: {type: integer}
+        digest: {type: string}
+        detector: {type: string}
+        name: {type: string}
+        taxonomy_code: {type: string}
+        enabled: {type: boolean}
+        first_seen_at: {type: string, format: date-time}
+        version_reused: {type: boolean, description: Another digest carries the same rule ID and version (edited without a version bump)}
+        source: {type: string, description: The rule's YAML source (rule history only)}
+    RuleSet:
+      type: object
+      required: [ruleset_digest, loaded_by, loaded_at, rules]
+      properties:
+        ruleset_digest: {type: string}
+        loaded_by: {type: string}
+        loaded_at: {type: string, format: date-time}
+        rules: {type: array, items: {$ref: '#/components/schemas/RuleVersion'}}
+    RuleHistory:
+      type: object
+      required: [rule_id, versions]
+      properties:
+        rule_id: {type: string}
+        versions: {type: array, items: {$ref: '#/components/schemas/RuleVersion'}}
+    SimPace:
+      type: object
+      required: [mode]
+      properties:
+        mode: {type: string, enum: [realtime, rate, fast]}
+        speed: {type: number, description: Simulated seconds per wall-clock second (realtime)}
+        rate: {type: number, description: Events per second (rate)}
+    SimInjection:
+      type: object
+      description: Episodes per symbol-hour; marking_the_close is a per-session probability
+      properties:
+        wash_trading: {type: number, minimum: 0}
+        spoofing: {type: number, minimum: 0}
+        momentum_ignition: {type: number, minimum: 0}
+        quote_stuffing: {type: number, minimum: 0}
+        marking_the_close: {type: number, minimum: 0}
+    SimScenario:
+      type: object
+      required: [scenario]
+      properties:
+        scenario: {type: string, example: spoofing.layering}
+        symbol: {type: string, description: Defaults to a symbol chosen by the simulator}
+    SimStatus:
+      type: object
+      required: [state]
+      additionalProperties: true
+      properties:
+        state: {type: string}
+        session_id: {type: string}
+        events_published: {type: integer}
+        pace: {type: string}
+        injection: {$ref: '#/components/schemas/SimInjection'}
