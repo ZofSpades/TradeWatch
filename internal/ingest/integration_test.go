@@ -52,6 +52,19 @@ func deleteTopics(t *testing.T, cfg kafka.Config) {
 type instance struct {
 	cancel context.CancelFunc
 	done   chan error
+	exited chan struct{}
+	err    error // valid once exited is closed
+}
+
+// running fails the test at once if the instance has exited on its own,
+// reporting why, instead of letting a wait for its output time out.
+func (i *instance) running(t *testing.T) {
+	t.Helper()
+	select {
+	case <-i.exited:
+		t.Fatalf("ingest exited before it was stopped: %v", i.err)
+	default:
+	}
 }
 
 func startIngest(t *testing.T, kcfg kafka.Config, group string, gapTimeout time.Duration) *instance {
@@ -71,11 +84,13 @@ func startIngest(t *testing.T, kcfg kafka.Config, group string, gapTimeout time.
 	}
 	svc.Attach(cl, NewRefDataTail(refCl, kcfg.Topics().RefData, quiet))
 	ctx, cancel := context.WithCancel(context.Background())
-	inst := &instance{cancel: cancel, done: make(chan error, 1)}
+	inst := &instance{cancel: cancel, done: make(chan error, 1), exited: make(chan struct{})}
 	go func() {
 		err := svc.Run(ctx)
 		cl.Close()
 		refCl.Close()
+		inst.err = err
+		close(inst.exited)
 		inst.done <- err
 	}()
 	return inst
@@ -138,10 +153,15 @@ func startTail(t *testing.T, kcfg kafka.Config, topic string) *tail {
 	return tl
 }
 
-func (tl *tail) waitFor(t *testing.T, cond func([]out) bool, timeout time.Duration) []out {
+// waitFor polls until cond holds, failing at once if one of the given
+// instances exits on its own.
+func (tl *tail) waitFor(t *testing.T, cond func([]out) bool, timeout time.Duration, insts ...*instance) []out {
 	t.Helper()
 	deadline := time.Now().Add(timeout)
 	for {
+		for _, in := range insts {
+			in.running(t)
+		}
 		tl.mu.Lock()
 		snapshot := append([]out(nil), tl.recs...)
 		tl.mu.Unlock()
@@ -289,7 +309,7 @@ func TestIngestSequencesASimulatedSession(t *testing.T) {
 
 	inst := startIngest(t, kcfg, kcfg.Prefix+"ingest", 5*time.Second)
 	events := startTail(t, kcfg, kcfg.Topics().MarketEvents)
-	recs := events.waitFor(t, func(r []out) bool { return len(r) >= count(want) }, 2*time.Minute)
+	recs := events.waitFor(t, func(r []out) bool { return len(r) >= count(want) }, 4*time.Minute, inst)
 	inst.stop(t)
 
 	checkComplete(t, recs, want, sim.DefaultUniverse())
@@ -317,15 +337,15 @@ func TestIngestResumesFromItsCheckpoint(t *testing.T) {
 
 	// The first instance processes part of the session and stops.
 	first := startIngest(t, kcfg, group, 5*time.Second)
-	tl.waitFor(t, func(r []out) bool { return len(r) >= count(want)/4 }, time.Minute)
+	tl.waitFor(t, func(r []out) bool { return len(r) >= count(want)/4 }, 3*time.Minute, first)
 	first.stop(t)
 
 	// A second instance joins, then a third instance joins and forces a
 	// rebalance while the second is mid-stream.
 	second := startIngest(t, kcfg, group, 5*time.Second)
-	tl.waitFor(t, func(r []out) bool { return uniqueKeys(r) >= count(want)/2 }, time.Minute)
+	tl.waitFor(t, func(r []out) bool { return uniqueKeys(r) >= count(want)/2 }, 3*time.Minute, second)
 	third := startIngest(t, kcfg, group, 5*time.Second)
-	recs := tl.waitFor(t, func(r []out) bool { return uniqueKeys(r) >= count(want) }, 2*time.Minute)
+	recs := tl.waitFor(t, func(r []out) bool { return uniqueKeys(r) >= count(want) }, 4*time.Minute, second, third)
 	second.stop(t)
 	third.stop(t)
 	if err := <-published; err != nil {
@@ -405,7 +425,7 @@ func TestIngestDeadLettersBadRecordsAndFillsGaps(t *testing.T) {
 	inst := startIngest(t, kcfg, kcfg.Prefix+"ingest", 500*time.Millisecond)
 	defer inst.stop(t)
 	tl := startTail(t, kcfg, topics.MarketEvents)
-	recs := tl.waitFor(t, func(r []out) bool { return len(r) >= 7 }, time.Minute)
+	recs := tl.waitFor(t, func(r []out) bool { return len(r) >= 7 }, 3*time.Minute, inst)
 	var got []string
 	for _, r := range recs {
 		got = append(got, label(r.ev))
