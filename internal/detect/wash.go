@@ -74,6 +74,10 @@ func init() {
 			{Symbol: "QZAP", Accounts: []string{"ACC-0001", "ACC-0002"}, Owners: []string{"BO-0001"},
 				F:     map[string]float64{"same_owner_trades": 2, "entry_gap_ms": 12, "size_match": 1, "inside_spread": 1},
 				Facts: map[string]string{"pattern": "direct"}},
+			// An account trading with itself.
+			{Symbol: "QZAP", Accounts: []string{"ACC-0001"}, Owners: []string{"BO-0001"},
+				F:     map[string]float64{"same_owner_trades": 3, "entry_gap_ms": 8000, "size_match": 0.4, "inside_spread": 0},
+				Facts: map[string]string{"pattern": "direct"}},
 			{Symbol: "QZAP", Accounts: []string{"ACC-0001", "ACC-0002", "ACC-0003"}, Owners: []string{"BO-0001", "BO-0002", "BO-0003"},
 				F:     map[string]float64{"ring_length": 3, "ring_balance": 1, "ring_duration_s": 42},
 				Facts: map[string]string{"pattern": "ring"}},

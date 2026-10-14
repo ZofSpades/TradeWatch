@@ -2,7 +2,7 @@ apiVersion: tradewatch/v1
 kind: DetectionRule
 metadata:
   id: TW-WASH-001
-  version: 1
+  version: 2
   name: Wash trading and circular trading
   detector: wash_trading
   taxonomy: MAR-WASH
@@ -32,10 +32,12 @@ spec:
     other in a closed cycle of {{int .F.ring_length}} legs within
     {{secs .F.ring_duration_s}}. Every leg looked pre-arranged, and the smallest
     leg was {{pct .F.ring_balance}} of the largest, so the shares went round
-    the circle and back with no net change in ownership.{{else}}Accounts
+    the circle and back with no net change in ownership.{{else}}{{if eq (len
+    .Accounts) 1}}Account {{index .Accounts 0}} (beneficial owner
+    {{index .Owners 0}}) traded {{.Symbol}} with itself{{else}}Accounts
     {{join .Accounts ", "}} share the beneficial owner {{index .Owners 0}} and
-    traded {{.Symbol}} with each other: {{int .F.same_owner_trades}} same-owner
-    trade(s) in the window. The two orders of the latest trade were entered
+    traded {{.Symbol}} with each other{{end}}: {{int .F.same_owner_trades}}
+    same-owner trade(s) in the window. The two orders of the latest trade were entered
     {{ms .F.entry_gap_ms}} apart at a size match of {{pct .F.size_match}}{{if
     gt .F.inside_spread 0.0}}, at a price inside the prevailing spread{{end}},
     so no beneficial ownership changed.{{end}}

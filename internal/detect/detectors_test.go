@@ -76,6 +76,27 @@ func TestWashRepeatedSameOwnerTradesAreAlerted(t *testing.T) {
 	}
 }
 
+// Found by the evaluation: an account whose own orders match each other was
+// explained as "Accounts X share the beneficial owner ... with each other".
+func TestWashAccountTradingWithItself(t *testing.T) {
+	s := washStream(t)
+	for i := 0; i < 3; i++ {
+		passive := s.limit("A1", sell, px+100, 1_000)
+		s.advance(20 * time.Second)
+		id := s.ioc("A1", buy, px+100, 250)
+		s.fill(buy, "A1", id, "A1", passive, px+100, 250, 0, 750)
+		s.advance(time.Minute)
+	}
+	alerts := s.alertsOf("TW-WASH-001")
+	if len(alerts) != 1 {
+		t.Fatalf("got %d alerts, want 1", len(alerts))
+	}
+	checkWellFormed(t, alerts[0])
+	if want := "Account A1 (beneficial owner BO-X) traded QZAP with itself: 3 same-owner trade(s)"; !strings.HasPrefix(alerts[0].GetExplanation(), want) {
+		t.Errorf("explanation %q", alerts[0].GetExplanation())
+	}
+}
+
 func TestWashSuppressesRepeatsOfOneEpisode(t *testing.T) {
 	s := washStream(t)
 	for i := 0; i < 4; i++ {
