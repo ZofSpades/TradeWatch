@@ -66,7 +66,9 @@ data and labels.
 | `api` | REST and server-sent events with JWT authentication; proxies simulator control for admins | `localhost:8080`, admin `:8094` (internal) |
 | `web` | The dashboard, served by nginx, which proxies `/api` to the API | `localhost:3000` |
 
-Each admin server exposes `/metrics`, `/healthz` and `/readyz`.
+Each admin server exposes `/metrics`, `/healthz`, `/readyz` and the Go
+profiler under `/debug/pprof/`. Admin ports stay on the internal network:
+compose does not publish them.
 
 ## Topics
 

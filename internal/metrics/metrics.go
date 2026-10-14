@@ -1,10 +1,13 @@
 // Package metrics provides the Prometheus registry and the admin HTTP server
 // that every TradeWatch service runs.
 //
-// The admin server exposes /metrics, /healthz (liveness) and /readyz
-// (readiness), plus any service-specific routes such as marketsim's control
-// API. Each binary also accepts a `healthcheck` subcommand that probes its
-// own /healthz endpoint, because the distroless runtime images have no curl.
+// The admin server exposes /metrics, /healthz (liveness), /readyz
+// (readiness) and the Go profiler under /debug/pprof/, plus any
+// service-specific routes such as marketsim's control API. It is an
+// operator interface: deployments keep the admin port on the internal
+// network and never publish it. Each binary also accepts a `healthcheck`
+// subcommand that probes its own /healthz endpoint, because the distroless
+// runtime images have no curl.
 package metrics
 
 import (
@@ -14,6 +17,7 @@ import (
 	"log/slog"
 	"net"
 	"net/http"
+	"net/http/pprof"
 	"strings"
 	"sync/atomic"
 	"time"
@@ -59,6 +63,14 @@ func NewServer(addr string, reg *prometheus.Registry, log *slog.Logger) *Server 
 		}
 		w.Write([]byte("ready\n"))
 	})
+	// CPU profiles and execution traces stream for the requested duration;
+	// the admin server sets no write timeout, so they are not cut short.
+	s.mux.HandleFunc("GET /debug/pprof/", pprof.Index)
+	s.mux.HandleFunc("GET /debug/pprof/cmdline", pprof.Cmdline)
+	s.mux.HandleFunc("GET /debug/pprof/profile", pprof.Profile)
+	s.mux.HandleFunc("GET /debug/pprof/symbol", pprof.Symbol)
+	s.mux.HandleFunc("POST /debug/pprof/symbol", pprof.Symbol)
+	s.mux.HandleFunc("GET /debug/pprof/trace", pprof.Trace)
 	return s
 }
 

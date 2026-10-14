@@ -69,6 +69,15 @@ func TestServerEndpoints(t *testing.T) {
 	if _, body := get(t, base+"/extra"); body != "extra" {
 		t.Errorf("extra route = %q", body)
 	}
+	if code, body := get(t, base+"/debug/pprof/"); code != http.StatusOK || !strings.Contains(body, "goroutine") {
+		t.Errorf("pprof index = %d:\n%s", code, body)
+	}
+	if code, body := get(t, base+"/debug/pprof/heap?debug=1"); code != http.StatusOK || !strings.Contains(body, "heap profile") {
+		t.Errorf("heap profile = %d:\n%.200s", code, body)
+	}
+	if code, body := get(t, base+"/debug/pprof/profile?seconds=1"); code != http.StatusOK || len(body) == 0 {
+		t.Errorf("CPU profile = %d, %d bytes", code, len(body))
+	}
 
 	cancel()
 	if err := <-done; err != nil {
