@@ -72,6 +72,18 @@ validate-rules: env ## Check the detection rules in rules/ the way the detector 
 eval: env ## Measure detection quality on simulated sessions and write docs/results/eval
 	$(TOOLBOX) go run ./cmd/evaluator
 
+# marketsim records every session into this compose volume.
+RECORDINGS := tradewatch_recordings
+
+.PHONY: replay
+replay: env ## Rerun detection over a recording: make replay REC=<file> [COMPARE=<rules dir>]; no REC lists them
+	@if [ -z "$(REC)" ]; then \
+		$(COMPOSE) run --rm --no-deps -v $(RECORDINGS):/recordings:ro toolbox ls -lh /recordings; \
+	else \
+		$(COMPOSE) run --rm --no-deps -v $(RECORDINGS):/recordings:ro toolbox \
+			go run ./cmd/replay -rules rules $(if $(COMPARE),-compare $(COMPARE)) /recordings/$(REC); \
+	fi
+
 .PHONY: bench-micro
 bench-micro: env ## Run Go micro-benchmarks and save results to docs/results/microbench
 	$(TOOLBOX) bash scripts/bench-micro.sh orderbook ./internal/orderbook
