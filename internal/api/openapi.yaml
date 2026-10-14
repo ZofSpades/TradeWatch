@@ -27,6 +27,7 @@ tags:
   - name: alerts
   - name: rules
   - name: live
+  - name: system
   - name: simulator
 paths:
   /api/v1/auth/login:
@@ -193,6 +194,24 @@ paths:
             application/json:
               schema: {$ref: '#/components/schemas/Stats'}
         '401': {$ref: '#/components/responses/Unauthorized'}
+  /api/v1/system:
+    get:
+      tags: [system]
+      summary: Throughput, consumer lag, latency and dead letters of the pipeline
+      description: |
+        Collected from Prometheus with a fixed set of queries and kept for
+        five seconds, so many open dashboards cost Prometheus one set of
+        queries. A rate or quantile is null when Prometheus has no data for
+        it, for example a latency quantile before the first alert.
+      operationId: getSystem
+      responses:
+        '200':
+          description: The pipeline's status
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/SystemStatus'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '503': {$ref: '#/components/responses/MetricsUnavailable'}
   /api/v1/live:
     get:
       tags: [live]
@@ -420,6 +439,11 @@ components:
           schema: {$ref: '#/components/schemas/Problem'}
     Unavailable:
       description: A dependency (Redis) is unavailable
+      content:
+        application/problem+json:
+          schema: {$ref: '#/components/schemas/Problem'}
+    MetricsUnavailable:
+      description: Prometheus is not configured or could not be queried
       content:
         application/problem+json:
           schema: {$ref: '#/components/schemas/Problem'}
@@ -654,6 +678,94 @@ components:
       properties:
         rule_id: {type: string}
         versions: {type: array, items: {$ref: '#/components/schemas/RuleVersion'}}
+    Quantiles:
+      type: object
+      description: Seconds, read from a Prometheus histogram whose bucket bounds are at most 1.5 times apart
+      required: [p50, p95, p99]
+      properties:
+        p50: {type: number, nullable: true}
+        p95: {type: number, nullable: true}
+        p99: {type: number, nullable: true}
+    Series:
+      type: array
+      description: One value per step from the history's start; null where Prometheus has no data
+      items: {type: number, nullable: true}
+    SystemStatus:
+      type: object
+      required: [generated_at, throughput, consumer_lag, latency, dead_letters, services, history, links]
+      properties:
+        generated_at: {type: string, format: date-time}
+        throughput:
+          type: object
+          description: Events per second over the last minute, and alerts per minute over the last five
+          required: [published, released, processed, alerts_per_minute]
+          properties:
+            published: {type: number, nullable: true, description: Market events marketsim handed to Kafka}
+            released: {type: number, nullable: true, description: Events ingest released to market_events in sequence order}
+            processed: {type: number, nullable: true, description: Events the detector instances ran through the detectors}
+            alerts_per_minute: {type: number, nullable: true, description: Alerts stored for the first time}
+        consumer_lag:
+          type: object
+          description: Records each consumer group has yet to process, summed over its partitions
+          required: [ingest, detector, alertsink]
+          properties:
+            ingest: {type: number, nullable: true}
+            detector: {type: number, nullable: true}
+            alertsink: {type: number, nullable: true}
+        latency:
+          type: object
+          description: |
+            event_to_detector is the time from marketsim publishing an event
+            to a detector processing it, and detector_processing the time to
+            run one event through every detector, both over the last five
+            minutes. event_to_stored_alert is the time from marketsim
+            publishing the event that triggered an alert to the alert being
+            stored, over the last fifteen.
+          required: [event_to_detector, detector_processing, event_to_stored_alert]
+          properties:
+            event_to_detector: {$ref: '#/components/schemas/Quantiles'}
+            detector_processing: {$ref: '#/components/schemas/Quantiles'}
+            event_to_stored_alert: {$ref: '#/components/schemas/Quantiles'}
+        dead_letters:
+          type: object
+          description: Records sent to the dead-letter topic in the last hour
+          required: [last_hour, by_reason]
+          properties:
+            last_hour: {type: integer}
+            by_reason:
+              type: array
+              items:
+                type: object
+                required: [stage, reason, count]
+                properties:
+                  stage: {type: string, description: The service that rejected the record}
+                  reason: {type: string}
+                  count: {type: integer}
+        services:
+          type: array
+          description: The pipeline's services in data-flow order
+          items:
+            type: object
+            required: [name, instances, up]
+            properties:
+              name: {type: string}
+              instances: {type: integer, description: Instances Prometheus discovered}
+              up: {type: integer, description: Instances that answered the last scrape}
+        history:
+          type: object
+          description: The last 30 minutes in 30-second steps
+          required: [start, step_seconds, published, processed, detector_lag, event_to_detector_p95]
+          properties:
+            start: {type: string, format: date-time}
+            step_seconds: {type: integer}
+            published: {$ref: '#/components/schemas/Series'}
+            processed: {$ref: '#/components/schemas/Series'}
+            detector_lag: {$ref: '#/components/schemas/Series'}
+            event_to_detector_p95: {$ref: '#/components/schemas/Series'}
+        links:
+          type: object
+          properties:
+            grafana: {type: string, description: 'The pipeline dashboard in Grafana, when configured'}
     SimPace:
       type: object
       required: [mode]

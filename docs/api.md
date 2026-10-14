@@ -63,6 +63,7 @@ curl -s "localhost:8080/api/v1/alerts?abuse_type=spoofing&limit=5" -H "Authoriza
 | `POST /api/v1/alerts/{key}/comments` | analyst | Add a note to the audit trail |
 | `GET /api/v1/stats` | analyst | Totals by status, abuse type and symbol (from Postgres) |
 | `GET /api/v1/live` | analyst | Running totals and the most recently stored alerts (from Redis) |
+| `GET /api/v1/system` | analyst | Throughput, consumer lag, latency percentiles, dead letters and service health (from Prometheus) |
 | `GET /api/v1/stream` | analyst | Server-sent events as alerts are raised and updated |
 | `GET /api/v1/rules` | analyst | The rule set most recently loaded by a detector |
 | `GET /api/v1/rules/{id}` | analyst | Every version of a rule that a detector has loaded, with its YAML source |
@@ -131,6 +132,30 @@ returns.
 - **Missed events.** Events are best-effort. After reconnecting, reload from
   `GET /api/v1/alerts`.
 
+## System status
+
+`GET /api/v1/system` summarizes the pipeline for the dashboard's System
+page. It runs a fixed set of PromQL queries against Prometheus
+(`TW_API_PROMETHEUS_URL`) and returns:
+
+- **Throughput:** events per second published, released by ingest and
+  processed by the detectors, over the last minute, and alerts stored per
+  minute over the last five.
+- **Consumer lag** of ingest, the detectors and the alert sink, in records.
+- **Latency percentiles** (p50, p95, p99): from publication to a detector
+  (last five minutes), the detectors' time per event, and from publication
+  to the stored alert (last fifteen).
+- **Dead letters** in the last hour, by stage and reason.
+- **Services:** the instances Prometheus found and how many are up.
+- **History:** the last 30 minutes in 30-second steps, for sparklines.
+
+A value is `null` when Prometheus has no data for it, for example a
+latency quantile before the first alert. The result is kept for five
+seconds, and concurrent requests share one collection, so any number of open
+dashboards costs Prometheus one set of queries every five seconds. Without
+a Prometheus URL, or when a query fails, the endpoint answers `503`. The
+cause is logged but not returned.
+
 ## Simulator control
 
 marketsim's control endpoints listen only on the internal network and have
@@ -160,6 +185,8 @@ admin's name. If marketsim cannot be reached, the API answers `502`.
 | `TW_REDIS_ADDR` | `localhost:16379` | Redis address |
 | `TW_REDIS_PREFIX` | `tw:` | Prefix of the live-view keys and channel |
 | `TW_API_SIM_URL` | `http://localhost:8090` | marketsim's admin server |
+| `TW_API_PROMETHEUS_URL` | none | Prometheus, for `GET /api/v1/system` |
+| `TW_API_GRAFANA_URL` | none | Grafana as a browser reaches it; the System page links to its pipeline dashboard |
 | `TW_API_JWT_SECRET` | required, at least 32 bytes | Token signing secret |
 | `TW_API_TOKEN_TTL` | 1h | Token lifetime |
 | `TW_API_ANALYST_PASSWORD`, `TW_API_ADMIN_PASSWORD` | required, at least 12 bytes | Account passwords |
@@ -182,4 +209,5 @@ admin's name. If marketsim cannot be reached, the API answers `502`.
 | `TestAlertWorkflowOverHTTP` | Paging and filters, evidence detail, every workflow error (`409`, `422`, `400`), comments, the audit trail, stats, the live view, rules and rule history |
 | `TestStreamDeliversRaisedAndUpdatedAlerts` | A raised alert and a status change reach a connected event-stream client |
 | `TestUnreachableSimulatorIsABadGateway` | The proxy answers `502` when marketsim is down |
+| `TestSystemSummarizesThePipelineFromPrometheus` and the other `TestSystem…` tests | Against a fake Prometheus: every figure, nulls for missing data, rounded and sorted dead-letter counts, services, history alignment and the five-second cache. Without Prometheus, or when it fails, the answer is a `503` that does not reveal the cause. |
 | `internal/auth` tests | Tampered payloads, `alg: none`, HS512, a wrong secret, wrong audience or issuer, a missing or past expiry, a token issued in the future, unknown users and changed roles are all refused |

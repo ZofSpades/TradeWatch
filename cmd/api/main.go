@@ -8,6 +8,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"os"
 	"os/signal"
@@ -66,6 +67,9 @@ func run(log *slog.Logger) error {
 	srv, err := api.NewServer(st, live.New(rdb, cfg.RedisPrefix, 500), authn, cfg.SimURL, reg, log)
 	if err != nil {
 		return err
+	}
+	if err := srv.SetMonitoring(cfg.PrometheusURL, api.Links{Grafana: cfg.GrafanaURL}); err != nil {
+		return fmt.Errorf("TW_API_PROMETHEUS_URL: %w", err)
 	}
 	admin := metrics.NewServer(cfg.HTTPAddr, reg, log)
 	admin.SetReady(true)

@@ -40,6 +40,8 @@ type Config struct {
 	RedisAddr       string
 	RedisPrefix     string
 	SimURL          string
+	PrometheusURL   string
+	GrafanaURL      string
 	JWTSecret       string
 	TokenTTL        time.Duration
 	AnalystPassword string
@@ -57,6 +59,8 @@ func LoadConfig(env *config.Env) (Config, error) {
 		RedisAddr:       env.String("TW_REDIS_ADDR", "localhost:16379"),
 		RedisPrefix:     env.String("TW_REDIS_PREFIX", "tw:"),
 		SimURL:          env.String("TW_API_SIM_URL", "http://localhost:8090"),
+		PrometheusURL:   env.String("TW_API_PROMETHEUS_URL", ""),
+		GrafanaURL:      env.String("TW_API_GRAFANA_URL", ""),
 		JWTSecret:       env.Required("TW_API_JWT_SECRET"),
 		TokenTTL:        env.Duration("TW_API_TOKEN_TTL", time.Hour),
 		AnalystPassword: env.Required("TW_API_ANALYST_PASSWORD"),
@@ -117,6 +121,10 @@ type Server struct {
 	sim   http.Handler
 	hub   *hub
 	m     *serverMetrics
+
+	prom     *promClient // nil: GET /api/v1/system is unavailable
+	links    Links
+	sysCache systemCache
 }
 
 // NewServer wires the API. simURL is the simulator's admin base URL.
@@ -149,6 +157,7 @@ func (s *Server) routes() []route {
 		{"POST /api/v1/alerts/{key}/transitions", auth.RoleAnalyst, s.transition},
 		{"POST /api/v1/alerts/{key}/comments", auth.RoleAnalyst, s.comment},
 		{"GET /api/v1/stats", auth.RoleAnalyst, s.stats},
+		{"GET /api/v1/system", auth.RoleAnalyst, s.system},
 		{"GET /api/v1/live", auth.RoleAnalyst, s.liveView},
 		{"GET /api/v1/stream", auth.RoleAnalyst, s.stream},
 		{"GET /api/v1/rules", auth.RoleAnalyst, s.rules},

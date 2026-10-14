@@ -189,6 +189,9 @@ services:
       TW_REDIS_ADDR: redis:6379
       TW_API_ADDR: ":8080"
       TW_API_SIM_URL: http://marketsim:8090
+      TW_API_PROMETHEUS_URL: http://prometheus:9090
+      # As a browser reaches Grafana: the dashboard links to it.
+      TW_API_GRAFANA_URL: http://localhost:3001
       TW_API_JWT_SECRET: ${TW_API_JWT_SECRET:?TW_API_JWT_SECRET is not set - run `make env`}
       TW_API_ANALYST_PASSWORD: ${TW_API_ANALYST_PASSWORD:?TW_API_ANALYST_PASSWORD is not set - run `make env`}
       TW_API_ADMIN_PASSWORD: ${TW_API_ADMIN_PASSWORD:?TW_API_ADMIN_PASSWORD is not set - run `make env`}

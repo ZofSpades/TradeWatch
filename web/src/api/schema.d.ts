@@ -152,6 +152,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/system": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Throughput, consumer lag, latency and dead letters of the pipeline
+         * @description Collected from Prometheus with a fixed set of queries and kept for
+         *     five seconds, so many open dashboards cost Prometheus one set of
+         *     queries. A rate or quantile is null when Prometheus has no data for
+         *     it, for example a latency quantile before the first alert.
+         */
+        get: operations["getSystem"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/live": {
         parameters: {
             query?: never;
@@ -540,6 +563,80 @@ export interface components {
             rule_id: string;
             versions: components["schemas"]["RuleVersion"][];
         };
+        /** @description Seconds, read from a Prometheus histogram whose bucket bounds are at most 1.5 times apart */
+        Quantiles: {
+            p50: number | null;
+            p95: number | null;
+            p99: number | null;
+        };
+        /** @description One value per step from the history's start; null where Prometheus has no data */
+        Series: (number | null)[];
+        SystemStatus: {
+            /** Format: date-time */
+            generated_at: string;
+            /** @description Events per second over the last minute, and alerts per minute over the last five */
+            throughput: {
+                /** @description Market events marketsim handed to Kafka */
+                published: number | null;
+                /** @description Events ingest released to market_events in sequence order */
+                released: number | null;
+                /** @description Events the detector instances ran through the detectors */
+                processed: number | null;
+                /** @description Alerts stored for the first time */
+                alerts_per_minute: number | null;
+            };
+            /** @description Records each consumer group has yet to process, summed over its partitions */
+            consumer_lag: {
+                ingest: number | null;
+                detector: number | null;
+                alertsink: number | null;
+            };
+            /**
+             * @description event_to_detector is the time from marketsim publishing an event
+             *     to a detector processing it, and detector_processing the time to
+             *     run one event through every detector, both over the last five
+             *     minutes. event_to_stored_alert is the time from marketsim
+             *     publishing the event that triggered an alert to the alert being
+             *     stored, over the last fifteen.
+             */
+            latency: {
+                event_to_detector: components["schemas"]["Quantiles"];
+                detector_processing: components["schemas"]["Quantiles"];
+                event_to_stored_alert: components["schemas"]["Quantiles"];
+            };
+            /** @description Records sent to the dead-letter topic in the last hour */
+            dead_letters: {
+                last_hour: number;
+                by_reason: {
+                    /** @description The service that rejected the record */
+                    stage: string;
+                    reason: string;
+                    count: number;
+                }[];
+            };
+            /** @description The pipeline's services in data-flow order */
+            services: {
+                name: string;
+                /** @description Instances Prometheus discovered */
+                instances: number;
+                /** @description Instances that answered the last scrape */
+                up: number;
+            }[];
+            /** @description The last 30 minutes in 30-second steps */
+            history: {
+                /** Format: date-time */
+                start: string;
+                step_seconds: number;
+                published: components["schemas"]["Series"];
+                processed: components["schemas"]["Series"];
+                detector_lag: components["schemas"]["Series"];
+                event_to_detector_p95: components["schemas"]["Series"];
+            };
+            links: {
+                /** @description The pipeline dashboard in Grafana, when configured */
+                grafana?: string;
+            };
+        };
         SimPace: {
             /** @enum {string} */
             mode: "realtime" | "rate" | "fast";
@@ -625,6 +722,15 @@ export interface components {
         };
         /** @description A dependency (Redis) is unavailable */
         Unavailable: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/problem+json": components["schemas"]["Problem"];
+            };
+        };
+        /** @description Prometheus is not configured or could not be queried */
+        MetricsUnavailable: {
             headers: {
                 [name: string]: unknown;
             };
@@ -914,6 +1020,28 @@ export interface operations {
                 };
             };
             401: components["responses"]["Unauthorized"];
+        };
+    };
+    getSystem: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The pipeline's status */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SystemStatus"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            503: components["responses"]["MetricsUnavailable"];
         };
     };
     getLive: {

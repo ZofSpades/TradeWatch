@@ -9,7 +9,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -17,25 +16,14 @@ import (
 	"testing"
 	"time"
 
-	"github.com/getkin/kin-openapi/openapi3"
-	"github.com/getkin/kin-openapi/openapi3filter"
 	"github.com/getkin/kin-openapi/routers"
-	"github.com/getkin/kin-openapi/routers/legacy"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/redis/go-redis/v9"
 
-	"github.com/ZofSpades/tradewatch/internal/auth"
 	"github.com/ZofSpades/tradewatch/internal/events/twpb"
 	"github.com/ZofSpades/tradewatch/internal/live"
 	"github.com/ZofSpades/tradewatch/internal/store"
 	"github.com/ZofSpades/tradewatch/internal/testutil"
-)
-
-var quiet = slog.New(slog.DiscardHandler)
-
-const (
-	analystPassword = "analyst password 123"
-	adminPassword   = "admin password 456"
 )
 
 // simCall is a request the fake simulator received.
@@ -90,17 +78,7 @@ func setup(t *testing.T) *apiEnv {
 	}))
 	t.Cleanup(sim.Close)
 
-	cfg := Config{AnalystPassword: analystPassword, AdminPassword: adminPassword}
-	users, err := cfg.Users()
-	if err != nil {
-		t.Fatal(err)
-	}
-	a, err := auth.New(auth.Config{Secret: []byte(strings.Repeat("s", 32)), TTL: time.Hour, Issuer: "tradewatch",
-		Audience: "tradewatch-api", Users: users})
-	if err != nil {
-		t.Fatal(err)
-	}
-	srv, err := NewServer(st, e.views, a, sim.URL, prometheus.NewRegistry(), quiet)
+	srv, err := NewServer(st, e.views, mustAuth(t), sim.URL, prometheus.NewRegistry(), quiet)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -122,13 +100,7 @@ func setup(t *testing.T) *apiEnv {
 // useRouter matches requests against the spec, served at the current base.
 func (e *apiEnv) useRouter(t *testing.T) {
 	t.Helper()
-	doc := loadSpec(t)
-	doc.Servers = openapi3.Servers{{URL: e.base}}
-	router, err := legacy.NewRouter(doc)
-	if err != nil {
-		t.Fatal(err)
-	}
-	e.router = router
+	e.router = specRouter(t, e.base)
 }
 
 // do sends a request and checks the response against the OpenAPI document:
@@ -163,24 +135,7 @@ func (e *apiEnv) do(method, path, token string, body any) (int, []byte, http.Hea
 	if err != nil {
 		e.t.Fatal(err)
 	}
-	route, params, err := e.router.FindRoute(req)
-	if err != nil {
-		if resp.StatusCode != http.StatusNotFound {
-			e.t.Errorf("%s %s: not in the spec but answered %d", method, path, resp.StatusCode)
-		}
-		return resp.StatusCode, data, resp.Header
-	}
-	in := &openapi3filter.ResponseValidationInput{
-		RequestValidationInput: &openapi3filter.RequestValidationInput{
-			Request: req, PathParams: params, Route: route,
-			Options: &openapi3filter.Options{AuthenticationFunc: openapi3filter.NoopAuthenticationFunc},
-		},
-		Status: resp.StatusCode, Header: resp.Header, Body: io.NopCloser(bytes.NewReader(data)),
-		Options: &openapi3filter.Options{IncludeResponseStatus: true},
-	}
-	if err := openapi3filter.ValidateResponse(context.Background(), in); err != nil {
-		e.t.Errorf("%s %s -> %d does not match the spec: %v\nbody: %s", method, path, resp.StatusCode, err, data)
-	}
+	checkResponse(e.t, e.router, req, resp.StatusCode, resp.Header, data)
 	return resp.StatusCode, data, resp.Header
 }
 
@@ -451,18 +406,4 @@ func TestUnreachableSimulatorIsABadGateway(t *testing.T) {
 	token := e.login("admin", adminPassword)
 	code, body, _ := e.do("GET", "/api/v1/sim/status", token, nil)
 	expect(t, "simulator down", code, 502, body)
-}
-
-func mustAuth(t *testing.T) *auth.Authenticator {
-	t.Helper()
-	users, err := Config{AnalystPassword: analystPassword, AdminPassword: adminPassword}.Users()
-	if err != nil {
-		t.Fatal(err)
-	}
-	a, err := auth.New(auth.Config{Secret: []byte(strings.Repeat("s", 32)), TTL: time.Hour, Issuer: "tradewatch",
-		Audience: "tradewatch-api", Users: users})
-	if err != nil {
-		t.Fatal(err)
-	}
-	return a
 }
