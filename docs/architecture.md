@@ -48,6 +48,19 @@ flowchart LR
     PG --> EVAL
 ```
 
+## Services
+
+| Service | Role | Ports (compose) |
+| --- | --- | --- |
+| `marketsim` | Simulated exchange: matching engines, participants, injected abuse, ground truth | admin `:8090` (internal) |
+| `ingest` | Validates, enriches and re-sequences the raw feeds into `market_events` | admin `:8091` (internal) |
+| `detector` (2 replicas) | Runs the rule-driven detectors and publishes alerts | admin `:8092` (internal) |
+| `migrate` | One-shot: applies the Postgres migrations | — |
+| `alertsink` | Stores alerts and rule sets in Postgres and keeps the Redis live views | admin `:8093` (internal) |
+| `api` | REST and server-sent events with JWT authentication; proxies simulator control for admins | `localhost:8080`, admin `:8094` (internal) |
+
+Each admin server exposes `/metrics`, `/healthz` and `/readyz`.
+
 ## Topics
 
 All symbol-keyed topics share one partition count (`TW_KAFKA_PARTITIONS`,

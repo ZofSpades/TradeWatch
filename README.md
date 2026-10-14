@@ -25,7 +25,7 @@ The project is being built in phases. This table tracks what exists today.
 | 4 | `ingest` validation, enrichment, DLQ | done |
 | 5 | Manipulation injector with ground truth | done |
 | 6 | `detector` framework, rule engine, five detectors | done |
-| 7 | `alertsink`, Postgres, `api` | planned |
+| 7 | `alertsink`, Postgres, `api` | done |
 | 8 | `evaluator` and first results | planned |
 | 9 | Dashboard | planned |
 | 10 | Observability, benchmarks, chaos tests, profiling | planned |
@@ -37,7 +37,7 @@ Requirements: Docker with the compose plugin, and GNU make. On Windows, use
 WSL2.
 
 ```sh
-make up      # build and start the stack (Kafka, Postgres, Redis, marketsim, ingest, detector)
+make up      # build and start the stack (Kafka, Postgres, Redis, marketsim, ingest, detector, alertsink, api)
 make infra   # start only Kafka (KRaft), Postgres and Redis
 make test    # unit, race and integration tests, run inside Docker
 make lint    # gofmt, go vet, staticcheck
@@ -48,6 +48,16 @@ make mutation-test  # check the order book tests catch injected engine bugs
 make help    # list all targets
 ```
 
+Once the stack is up, the API listens on `http://localhost:8080`. `make env`
+generated the passwords of its `analyst` and `admin` accounts into `.env`:
+
+```sh
+PW=$(grep '^TW_API_ANALYST_PASSWORD=' .env | cut -d= -f2-)
+TOKEN=$(curl -s -X POST localhost:8080/api/v1/auth/login -H 'Content-Type: application/json' \
+  -d "{\"username\":\"analyst\",\"password\":\"$PW\"}" | jq -r .access_token)
+curl -s localhost:8080/api/v1/stats -H "Authorization: Bearer $TOKEN" | jq
+```
+
 ## Documentation
 
 - [Architecture](docs/architecture.md)
@@ -56,4 +66,7 @@ make help    # list all targets
 - [Injected abuse and ground truth](docs/manipulation.md)
 - [Ingest](docs/ingest.md)
 - [Detectors and rules](docs/detectors.md)
+- [Storage and the alert sink](docs/storage.md)
+- [API](docs/api.md)
+- [Delivery semantics, end to end](docs/delivery-semantics.md)
 - [Architecture decision records](docs/adr/README.md)

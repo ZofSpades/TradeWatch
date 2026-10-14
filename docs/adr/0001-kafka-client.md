@@ -9,8 +9,9 @@ Every TradeWatch service talks to Kafka. The stateful consumers (ingest and
 the detector) need more control than "read, process, auto-commit":
 
 - **Manual offset commits** that happen only after outputs are durably
-  written (at-least-once with idempotent sinks, see the delivery-semantics
-  ADR).
+  written (at-least-once with idempotent sinks, see
+  [ADR-0006](0006-idempotent-alert-sink.md) and
+  [delivery-semantics.md](../delivery-semantics.md)).
 - **Rebalance hooks** to flush outputs and checkpoint state before a partition
   moves to another instance, and a guarantee that a rebalance cannot happen
   while a batch is half processed.

@@ -7,3 +7,4 @@
 | [0003](0003-partitioning-and-ordering.md) | Partition by symbol and restore cross-topic order with sequence numbers |
 | [0004](0004-checkpoints-in-commit-metadata.md) | Stateful consumers checkpoint in offset-commit metadata |
 | [0005](0005-detector-state-by-replay.md) | Detector state is rebuilt by deterministic replay |
+| [0006](0006-idempotent-alert-sink.md) | Alerts are stored once through an idempotent upsert, not exactly-once delivery |
