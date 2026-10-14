@@ -20,6 +20,7 @@ coverage.*
 
 # Web dashboard
 web/node_modules/
+web/e2e/node_modules/
 web/dist/
 web/test-results/
 web/playwright-report/

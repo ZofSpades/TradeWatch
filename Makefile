@@ -66,6 +66,14 @@ web-test: env ## Check, test and build the dashboard (in Docker)
 		cmp -s /tmp/schema.d.ts src/api/schema.d.ts || { echo "src/api/schema.d.ts is out of date: run npm run gen:api"; exit 1; }; \
 		npm run typecheck; npm test; npx vite build --outDir /tmp/dist --emptyOutDir'
 
+.PHONY: web-e2e
+web-e2e: env ## Drive the running dashboard in a real browser (sign-in, keyboard workflow, live alerts); changes data
+	$(COMPOSE) run --rm --no-deps e2e sh -c 'npm ci --no-audit --no-fund && node smoke.mjs'
+
+.PHONY: screenshots
+screenshots: env ## Capture the running dashboard into docs/images
+	$(COMPOSE) run --rm --no-deps e2e sh -c 'npm ci --no-audit --no-fund && node screenshots.mjs /src/docs/images'
+
 .PHONY: test-unit
 test-unit: ## Run unit tests with the local Go toolchain
 	go test ./...
