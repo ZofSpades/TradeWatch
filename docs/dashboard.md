@@ -1,10 +1,11 @@
 # Dashboard
 
-The dashboard is the analyst's view of TradeWatch. It has four parts:
+The dashboard is the analyst's view of TradeWatch. It has five parts:
 
 - a live queue of alerts;
 - each alert's evidence and workflow;
 - the rules in force and their history;
+- the pipeline's health, from Prometheus;
 - for admins, control of the simulated market.
 
 In the compose stack it is served on `http://localhost:3000`. Sign in as
@@ -45,6 +46,21 @@ version. A rule whose content changed without a version bump is flagged.
 Selecting a rule shows every version a detector has loaded, with its YAML
 source.
 
+**System.** The pipeline's health, refreshed every 10 seconds from
+`GET /api/v1/system`:
+
+- **Throughput:** events per second at each stage and alerts per minute.
+- **Consumer lag** of each consumer group.
+- **Services:** how many instances of each are up.
+- **Latency percentiles:** from publication to a detector and to the
+  stored alert, and the detectors' time per event.
+- **Dead letters** in the last hour, by stage and reason.
+- **Sparklines** of the last 30 minutes.
+
+If Prometheus cannot be reached, the page says so and keeps the last
+figures it had. A link opens the full pipeline dashboard in Grafana
+([observability.md](observability.md)).
+
 **Simulator** (admins only). The session's state and market time. From here
 an admin can inject a labelled abuse episode now (optionally on a chosen
 symbol) and change the background injection rates. Everything on this page
@@ -61,7 +77,7 @@ is simulated.
 | `c` | Comment on it |
 | `r` | Reload the queue |
 | `/` | Filter by symbol |
-| `1` / `2` / `3` | Alerts / Rules / Simulator |
+| `1` / `2` / `3` / `4` | Alerts / Rules / System / Simulator (admins) |
 | `?` | Show the shortcuts |
 | `Esc` | Close a dialog |
 
@@ -114,8 +130,8 @@ dialog is open.
 
 | Command | What it checks |
 | --- | --- |
-| `make web-test` (in Docker; also part of `make test`) | The generated API types match `openapi.yaml`, the app type-checks, Vitest component tests pass, and the production build succeeds. The tests cover parsing the event stream (including events split across chunks), client errors and the session ending on 401, the router, keyboard navigation of the queue, live arrivals and filters, and the full workflow (required reasons, Escape, button states). They also cover the chart and sign-in. |
-| `make web-e2e` (needs `make up`) | Playwright drives the running stack in Chromium. An analyst signs in and the live feed connects through nginx. The analyst triages and then dismisses an alert with the keyboard; the dismissal asks for a reason. An admin injects a quote-stuffing burst through the API, and its alert arrives live in the open queue. The simulator page schedules a scenario, and no page logs an error. This changes data. |
+| `make web-test` (in Docker; also part of `make test`) | The generated API types match `openapi.yaml`, the app type-checks, Vitest component tests pass, and the production build succeeds. The tests cover parsing the event stream (including events split across chunks), client errors and the session ending on 401, the router, keyboard navigation of the queue, live arrivals and filters, and the full workflow (required reasons, Escape, button states). They also cover the chart, sign-in, and the System page (every figure, missing data, a failing refresh that keeps the last figures). |
+| `make web-e2e` (needs `make up`) | Playwright drives the running stack in Chromium. An analyst signs in and the live feed connects through nginx. The analyst triages and then dismisses an alert with the keyboard; the dismissal asks for a reason. The System page shows live rates from Prometheus and every service up, including both detector replicas. An admin injects a quote-stuffing burst through the API, and its alert arrives live in the open queue. The simulator page schedules a scenario, and no page logs an error. This changes data. |
 | `make screenshots` (needs `make up`) | Captures the screens into `docs/images` |
 
 ## Developing

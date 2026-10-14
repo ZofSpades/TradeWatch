@@ -9,6 +9,7 @@ import { AlertsPage } from "./pages/AlertsPage";
 import { LoginPage } from "./pages/LoginPage";
 import { RulesPage } from "./pages/RulesPage";
 import { SimulatorPage } from "./pages/SimulatorPage";
+import { SystemPage } from "./pages/SystemPage";
 import { href, useRoute, type Route } from "./router";
 import { useTheme } from "./theme";
 
@@ -33,7 +34,8 @@ function Shell() {
     {
       "1": () => navigate({ page: "alerts" }),
       "2": () => navigate({ page: "rules" }),
-      "3": () => admin && navigate({ page: "simulator" }),
+      "3": () => navigate({ page: "system" }),
+      "4": () => admin && navigate({ page: "simulator" }),
       "?": () => setHelp(true),
     },
     !help,
@@ -58,7 +60,8 @@ function Shell() {
         <nav aria-label="Main">
           {tab({ page: "alerts" }, "Alerts", "1")}
           {tab({ page: "rules" }, "Rules", "2")}
-          {admin && tab({ page: "simulator" }, "Simulator", "3")}
+          {tab({ page: "system" }, "System", "3")}
+          {admin && tab({ page: "simulator" }, "Simulator", "4")}
         </nav>
         <div className="top-right">
           <button type="button" className="icon" onClick={() => setHelp(true)} aria-label="Keyboard shortcuts">
@@ -83,6 +86,7 @@ function Shell() {
         {route.page === "rules" && (
           <RulesPage selected={route.id} onSelect={(id) => navigate(id ? { page: "rules", id } : { page: "rules" })} />
         )}
+        {route.page === "system" && <SystemPage />}
         {route.page === "simulator" && <SimulatorPage />}
       </main>
       <footer className="foot">All market data is simulated. Not compliance advice.</footer>

@@ -62,6 +62,11 @@ exactly instead, from the stored alerts.
 allocation rate, goroutines, garbage collection and open file descriptors
 for every instance, filterable by service.
 
+The analyst dashboard's System page shows the essentials from Prometheus
+without leaving the app: throughput, consumer lag, latency percentiles,
+dead letters and service health ([dashboard.md](dashboard.md), and
+`GET /api/v1/system` in [api.md](api.md#system-status)).
+
 Dashboards are provisioned read-only from the JSON in
 `deploy/compose/grafana/dashboards`; changes made in the UI are not kept.
 `TestDashboardsQueryExportedMetrics` parses every query and fails if it

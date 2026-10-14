@@ -30,6 +30,10 @@ try {
       await page.waitForSelector(".source");
       await page.screenshot({ path: `${out}/dashboard-rules.png` });
       await page.keyboard.press("3");
+      await page.waitForSelector(".system-grid .spark svg");
+      await page.waitForTimeout(300);
+      await page.screenshot({ path: `${out}/dashboard-system.png` });
+      await page.keyboard.press("4");
       await page.waitForSelector("text=Simulated market");
       await page.waitForTimeout(500);
       await page.screenshot({ path: `${out}/dashboard-simulator.png` });

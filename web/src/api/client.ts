@@ -11,6 +11,7 @@ import type {
   SimStatus,
   Stats,
   Status,
+  SystemStatus,
 } from "./types";
 
 /** An HTTP error from the API, carrying the problem detail it returned. */
@@ -87,6 +88,7 @@ export function makeClient(getToken: () => string | null, onUnauthorized: () => 
       request<AlertSummary>("POST", `${alertPath(key)}/transitions`, note ? { to, note } : { to }),
     comment: (key: string, note: string) => request<AuditEntry>("POST", `${alertPath(key)}/comments`, { note }),
     stats: () => request<Stats>("GET", "/api/v1/stats"),
+    system: () => request<SystemStatus>("GET", "/api/v1/system"),
     live: (limit = 20) => request<LiveView>("GET", `/api/v1/live?limit=${limit}`),
     rules: () => request<RuleSet>("GET", "/api/v1/rules"),
     ruleHistory: (id: string) => request<RuleHistory>("GET", `/api/v1/rules/${encodeURIComponent(id)}`),

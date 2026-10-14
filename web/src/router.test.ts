@@ -9,6 +9,7 @@ describe("router", () => {
       { page: "alerts" as const, key: "0123456789abcdef0123456789abcdef" },
       { page: "rules" as const },
       { page: "rules" as const, id: "TW-WASH-001" },
+      { page: "system" as const },
       { page: "simulator" as const },
     ]) {
       expect(parseHash(href(r))).toEqual(r);

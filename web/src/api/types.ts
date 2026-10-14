@@ -23,6 +23,8 @@ export type EvidenceEvent = S["EvidenceEvent"];
 export type PricePoint = S["PricePoint"];
 export type LoginResponse = S["LoginResponse"];
 export type Role = S["Role"];
+export type SystemStatus = S["SystemStatus"];
+export type Quantiles = S["Quantiles"];
 
 export const ABUSE_TYPES: AbuseType[] = [
   "wash_trading",

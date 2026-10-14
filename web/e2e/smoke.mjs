@@ -61,6 +61,17 @@ try {
   await detail.locator(".detail-badges", { hasText: "Dismissed" }).waitFor();
   await detail.getByText("end-to-end check: legitimate activity").waitFor();
 
+  step("3 opens the system page, with live rates and every service up from Prometheus");
+  await page.keyboard.press("3");
+  const throughput = page.getByRole("region", { name: "Throughput" });
+  await throughput.waitFor({ timeout: 15_000 });
+  assert.match(await throughput.innerText(), /Published by marketsim\s*[\d,.]+ events\/s/);
+  const services = page.getByRole("region", { name: "Services" });
+  await services.getByText("2 of 2 up").waitFor();
+  for (const name of ["marketsim", "ingest", "alertsink", "api"]) {
+    assert.match(await services.innerText(), new RegExp(`${name}\\s*1 of 1 up`), `${name} is up`);
+  }
+
   step("an admin injects a quote-stuffing burst and its alert arrives live");
   const admin = await browser.newContext({ viewport: { width: 1440, height: 900 } });
   const adminPage = await admin.newPage();
@@ -82,7 +93,7 @@ try {
   await adminPage.waitForSelector("table[aria-label=Alerts] tbody tr.fresh", { timeout: 120_000 });
 
   step("the simulator page schedules a scenario");
-  await adminPage.keyboard.press("3");
+  await adminPage.keyboard.press("4");
   await adminPage.getByRole("button", { name: "spoofing.layering" }).click();
   await adminPage.getByText("Scenario spoofing.layering scheduled.").waitFor();
 

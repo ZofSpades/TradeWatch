@@ -73,3 +73,19 @@ export function nextStatuses(s: Status): Status[] {
 export function needsNote(s: Status): boolean {
   return s === "escalated" || s === "dismissed";
 }
+
+/** A rate or count from the metrics, or "–" when there is no data. */
+export function fmtRate(v: number | null | undefined): string {
+  if (v === null || v === undefined) return "–";
+  if (v !== 0 && Math.abs(v) < 10) return v.toFixed(1);
+  return Math.round(v).toLocaleString("en-US");
+}
+
+/** A duration given in seconds, in the unit that suits it. */
+export function fmtDuration(s: number | null | undefined): string {
+  if (s === null || s === undefined) return "–";
+  if (s < 0.001) return `${Math.round(s * 1_000_000)} µs`;
+  if (s < 0.01) return `${(s * 1000).toFixed(1)} ms`;
+  if (s < 1) return `${Math.round(s * 1000)} ms`;
+  return `${s.toFixed(s < 10 ? 2 : 1)} s`;
+}

@@ -762,6 +762,180 @@ summary {
   align-items: center;
 }
 
+/* System */
+
+.system-head {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-bottom: 12px;
+}
+
+.system-head h2 {
+  margin: 0;
+  font-size: 16px;
+}
+
+.system-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  align-items: start;
+}
+
+.card {
+  padding: 14px 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.card.wide {
+  grid-column: span 2;
+}
+
+.card h3 {
+  margin: 0 0 10px;
+  font-size: 14px;
+}
+
+.stat-list {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 4px 12px;
+  margin: 0 0 12px;
+}
+
+.stat-list dt {
+  color: var(--muted);
+}
+
+.stat-list dd {
+  margin: 0;
+  text-align: right;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.unit {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 400;
+}
+
+.big-number {
+  margin: 0 0 8px;
+  font-size: 28px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.services {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.services li {
+  display: grid;
+  grid-template-columns: 12px 1fr auto;
+  gap: 8px;
+  align-items: center;
+}
+
+.health {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--muted);
+}
+
+.health.ok {
+  background: var(--ok);
+}
+
+.health.warn {
+  background: var(--warn);
+}
+
+.health.down {
+  background: var(--danger);
+}
+
+.latency tbody th {
+  position: static;
+  background: none;
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.latency td.num {
+  white-space: nowrap;
+}
+
+.row-note {
+  display: block;
+  font-size: 12px;
+  font-weight: 400;
+}
+
+.spark {
+  margin: 12px 0 0;
+}
+
+.spark svg {
+  display: block;
+  width: 100%;
+  height: 56px;
+}
+
+.spark-base {
+  stroke: var(--chart-grid);
+  stroke-width: 1;
+}
+
+.spark-line {
+  fill: none;
+  stroke-width: 2;
+}
+
+.spark-line.tone-a {
+  stroke: var(--chart-last);
+}
+
+.spark-line.tone-b {
+  stroke: var(--chart-bid);
+}
+
+.swatch.tone-a {
+  background: var(--chart-last);
+}
+
+.swatch.tone-b {
+  background: var(--chart-bid);
+}
+
+.spark figcaption {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  margin-top: 4px;
+  font-size: 12px;
+}
+
+.spark-empty,
+.system-note {
+  font-size: 12px;
+}
+
+.system-note {
+  margin-top: 16px;
+}
+
 /* Dialogs */
 
 .backdrop {
@@ -831,4 +1005,20 @@ summary {
 td code,
 .nowrap {
   white-space: nowrap;
+}
+
+@media (max-width: 1100px) {
+  .system-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 700px) {
+  .system-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .card.wide {
+    grid-column: auto;
+  }
 }

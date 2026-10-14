@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 export type Route =
   | { page: "alerts"; key?: string }
   | { page: "rules"; id?: string }
+  | { page: "system" }
   | { page: "simulator" };
 
 export function parseHash(hash: string): Route {
@@ -11,6 +12,8 @@ export function parseHash(hash: string): Route {
   switch (parts[0]) {
     case "rules":
       return parts[1] ? { page: "rules", id: parts[1] } : { page: "rules" };
+    case "system":
+      return { page: "system" };
     case "simulator":
       return { page: "simulator" };
     default:
@@ -22,6 +25,8 @@ export function href(r: Route): string {
   switch (r.page) {
     case "rules":
       return r.id ? `#/rules/${encodeURIComponent(r.id)}` : "#/rules";
+    case "system":
+      return "#/system";
     case "simulator":
       return "#/simulator";
     default:
