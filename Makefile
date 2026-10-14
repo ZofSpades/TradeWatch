@@ -120,6 +120,16 @@ bench: up ## Load-test the pipeline at increasing event rates and write docs/res
 		-commit "$$(git -c safe.directory="$$PWD" rev-parse --short HEAD 2>/dev/null || true)" $(BENCH_FLAGS) || status=$$?; \
 	$(COMPOSE) up -d --no-deps --force-recreate --wait marketsim; exit $$status
 
+PROFILE_RATE ?= 20000
+PROFILE_SECONDS ?= 30
+PROFILE_OUT ?= tmp/profiles
+
+.PHONY: profile
+profile: up ## CPU-profile every service at a fixed rate: PROFILE_RATE events/s for PROFILE_SECONDS, into PROFILE_OUT
+	TW_BENCH_RUN=$$(date -u +%Y%m%dT%H%M%SZ) $(BENCH_COMPOSE) up -d --no-deps --force-recreate --wait marketsim
+	status=0; $(TOOLBOX) bash scripts/profile.sh $(PROFILE_RATE) $(PROFILE_SECONDS) $(PROFILE_OUT) || status=$$?; \
+	$(COMPOSE) up -d --no-deps --force-recreate --wait marketsim; exit $$status
+
 .PHONY: bench-micro
 bench-micro: env ## Run Go micro-benchmarks and save results to docs/results/microbench
 	$(TOOLBOX) bash scripts/bench-micro.sh orderbook ./internal/orderbook
