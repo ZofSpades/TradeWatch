@@ -2,7 +2,7 @@ apiVersion: tradewatch/v1
 kind: DetectionRule
 metadata:
   id: TW-MOMO-001
-  version: 1
+  version: 2
   name: Momentum ignition (pump and dump)
   detector: momentum_ignition
   taxonomy: MAR-MOMENTUM
@@ -21,7 +21,7 @@ spec:
   params:
     impulse_window: 60s
     min_impulse_orders: 3
-    min_move_bps: 30
+    min_move_bps: 20
     min_move_sigma: 4
     volatility_lookback: 30m
     min_aggressive_share: 0.4

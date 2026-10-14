@@ -19,7 +19,7 @@ spec:
   params:
     window: 60s
     min_orders: 3
-    min_move_bps: 30
+    min_move_bps: 20
   explanation: >-
     Account {{index .Accounts 0}} sent {{int .F.aggressive_orders}} aggressive
     {{.Facts.direction}} orders in {{.Symbol}} while the price moved
