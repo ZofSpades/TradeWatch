@@ -49,7 +49,7 @@ The project is being built in phases. This table tracks what exists today.
 | 6 | `detector` framework, rule engine, five detectors | done |
 | 7 | `alertsink`, Postgres, `api` | done |
 | 8 | `evaluator` and first results | done |
-| 9 | Dashboard | planned |
+| 9 | Dashboard | done |
 | 10 | Observability, benchmarks, chaos tests, profiling | planned |
 | 11 | Docs, polish, `make demo` | planned |
 
@@ -59,21 +59,24 @@ Requirements: Docker with the compose plugin, and GNU make. On Windows, use
 WSL2.
 
 ```sh
-make up      # build and start the stack (Kafka, Postgres, Redis, marketsim, ingest, detector, alertsink, api)
+make up      # build and start the stack; the dashboard is then on http://localhost:3000
 make infra   # start only Kafka (KRaft), Postgres and Redis
-make test    # unit, race and integration tests, run inside Docker
+make test    # Go unit, race and integration tests and the dashboard tests, in Docker
 make lint    # gofmt, go vet, staticcheck
 make proto   # lint protobuf schemas and regenerate Go code
 make validate-rules # check the detection rules in rules/
 make eval    # measure detection quality; writes docs/results/eval
 make replay  # list session recordings; REC=<file> [COMPARE=<rules dir>] replays one offline
+make web-test       # dashboard type-check, tests and build (also part of make test)
+make web-e2e        # drive the running dashboard in a real browser (changes data)
 make bench-micro    # Go micro-benchmarks, saved under docs/results/microbench
 make mutation-test  # check the order book tests catch injected engine bugs
 make help    # list all targets
 ```
 
-Once the stack is up, the API listens on `http://localhost:8080`. `make env`
-generated the passwords of its `analyst` and `admin` accounts into `.env`:
+Once the stack is up, open the dashboard on `http://localhost:3000` and sign
+in as `analyst` or `admin`. `make env` generated their passwords into `.env`.
+The API itself listens on `http://localhost:8080`:
 
 ```sh
 PW=$(grep '^TW_API_ANALYST_PASSWORD=' .env | cut -d= -f2-)
@@ -91,6 +94,7 @@ curl -s localhost:8080/api/v1/stats -H "Authorization: Bearer $TOKEN" | jq
 - [Ingest](docs/ingest.md)
 - [Detectors and rules](docs/detectors.md)
 - [Storage and the alert sink](docs/storage.md)
+- [Dashboard](docs/dashboard.md)
 - [API](docs/api.md)
 - [Delivery semantics, end to end](docs/delivery-semantics.md)
 - [Architecture decision records](docs/adr/README.md)

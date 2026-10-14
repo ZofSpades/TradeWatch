@@ -64,6 +64,7 @@ data and labels.
 | `migrate` | One-shot: applies the Postgres migrations | — |
 | `alertsink` | Stores alerts and rule sets in Postgres and keeps the Redis live views | admin `:8093` (internal) |
 | `api` | REST and server-sent events with JWT authentication; proxies simulator control for admins | `localhost:8080`, admin `:8094` (internal) |
+| `web` | The dashboard, served by nginx, which proxies `/api` to the API | `localhost:3000` |
 
 Each admin server exposes `/metrics`, `/healthz` and `/readyz`.
 
