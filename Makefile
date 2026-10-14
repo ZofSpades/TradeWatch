@@ -136,6 +136,10 @@ bench-micro: env ## Run Go micro-benchmarks and save results to docs/results/mic
 	$(TOOLBOX) bash scripts/bench-micro.sh detect ./internal/detect
 	$(TOOLBOX) bash scripts/bench-micro.sh ingest ./internal/ingest
 
+.PHONY: bench-compare
+bench-compare: env ## Benchmark two commits and save a benchstat comparison: NAME= OLD= NEW= PKG= BENCH=
+	$(TOOLBOX) bash scripts/bench-compare.sh $(NAME) $(OLD) $(NEW) $(PKG) '$(BENCH)'
+
 .PHONY: mutation-test
 mutation-test: env ## Check that the order book tests catch hand-injected engine bugs
 	$(TOOLBOX) bash scripts/mutation-orderbook.sh
