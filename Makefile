@@ -68,6 +68,10 @@ lint: env ## Run gofmt, go vet and staticcheck (in Docker)
 validate-rules: env ## Check the detection rules in rules/ the way the detector loads them
 	$(TOOLBOX) go run ./cmd/detector validate-rules rules
 
+.PHONY: eval
+eval: env ## Measure detection quality on simulated sessions and write docs/results/eval
+	$(TOOLBOX) go run ./cmd/evaluator
+
 .PHONY: bench-micro
 bench-micro: env ## Run Go micro-benchmarks and save results to docs/results/microbench
 	$(TOOLBOX) bash scripts/bench-micro.sh orderbook ./internal/orderbook
