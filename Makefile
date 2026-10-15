@@ -64,17 +64,6 @@ test: infra ## Run the Go unit, race and integration tests and the dashboard tes
 	$(TOOLBOX) go test -race -tags=integration -count=1 ./...
 	$(MAKE) web-test
 
-.PHONY: test-report
-test-report: infra ## Run the suites make test runs and count the results into docs/results/tests (about 15 minutes)
-	mkdir -p tmp/test-report
-	status=0; $(TOOLBOX) sh -c 'go test -tags=integration -list . ./... > tmp/test-report/list-all.txt && \
-		go test -list . ./... > tmp/test-report/list-unit.txt && \
-		go test -race -tags=integration -count=1 -json ./... > tmp/test-report/go.json' || status=$$?; \
-	$(WEBTOOLS) sh -c 'npm ci --no-audit --no-fund >/dev/null && \
-		npx vitest run --reporter=json --outputFile=/src/tmp/test-report/web.json >/dev/null' || status=$$?; \
-	$(TOOLBOX) go run ./cmd/testreport -commit "$$(git -c safe.directory="$$PWD" rev-parse --short HEAD 2>/dev/null || true)" || status=$$?; \
-	exit $$status
-
 WEBTOOLS := $(COMPOSE) run --rm --no-deps webtools
 
 .PHONY: web-test
