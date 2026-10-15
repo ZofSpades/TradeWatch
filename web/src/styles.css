@@ -316,6 +316,10 @@ textarea {
   background: var(--warn);
 }
 
+.live-hour {
+  color: var(--muted);
+}
+
 .live-counts {
   display: flex;
   gap: 14px;

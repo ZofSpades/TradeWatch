@@ -10,11 +10,11 @@
 package auth
 
 import (
+	"context"
 	"crypto/rand"
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"sync"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -39,6 +39,8 @@ var (
 	ErrInvalidCredentials = errors.New("auth: invalid username or password")
 	ErrTooManyAttempts    = errors.New("auth: too many failed logins; try again later")
 	ErrInvalidToken       = errors.New("auth: invalid token")
+	// ErrUnavailable is returned when the failed logins cannot be counted.
+	ErrUnavailable = errors.New("auth: failed logins cannot be counted")
 )
 
 // MinSecretBytes and MinPasswordBytes are the shortest accepted signing
@@ -78,9 +80,12 @@ type Config struct {
 	Audience string
 	Users    []User
 	// MaxFailures failed logins within FailureWindow lock a username until
-	// the oldest of them leaves the window.
+	// the oldest of them leaves the window. Only configured users are
+	// counted: any other username simply fails.
 	MaxFailures   int
 	FailureWindow time.Duration
+	// Failures counts them; nil counts them in memory, for one instance.
+	Failures FailureLog
 }
 
 // Claims are the claims of an access token.
@@ -95,11 +100,9 @@ type Authenticator struct {
 	users map[string]User
 	// dummy is compared against when the username is unknown, so a login
 	// takes as long for unknown users as for wrong passwords.
-	dummy []byte
-	now   func() time.Time
-
-	mu       sync.Mutex
-	failures map[string][]time.Time
+	dummy    []byte
+	now      func() time.Time
+	failures FailureLog
 }
 
 // New validates the configuration and returns an Authenticator.
@@ -116,7 +119,10 @@ func New(cfg Config) (*Authenticator, error) {
 	if cfg.FailureWindow <= 0 {
 		cfg.FailureWindow = 15 * time.Minute
 	}
-	a := &Authenticator{cfg: cfg, users: map[string]User{}, now: time.Now, failures: map[string][]time.Time{}}
+	if cfg.Failures == nil {
+		cfg.Failures = newMemoryFailures()
+	}
+	a := &Authenticator{cfg: cfg, users: map[string]User{}, now: time.Now, failures: cfg.Failures}
 	for _, u := range cfg.Users {
 		if _, dup := a.users[u.Name]; dup {
 			return nil, fmt.Errorf("auth: user %s configured twice", u.Name)
@@ -139,52 +145,34 @@ func New(cfg Config) (*Authenticator, error) {
 func (a *Authenticator) TTL() time.Duration { return a.cfg.TTL }
 
 // Login checks a username and password and returns a signed token.
-func (a *Authenticator) Login(username, password string) (string, *Claims, error) {
+func (a *Authenticator) Login(ctx context.Context, username, password string) (string, *Claims, error) {
 	now := a.now()
-	if a.locked(username, now) {
-		return "", nil, ErrTooManyAttempts
-	}
 	u, known := a.users[username]
+	if known {
+		n, err := a.failures.Failures(ctx, username, now, a.cfg.FailureWindow)
+		if err != nil {
+			return "", nil, fmt.Errorf("%w: %v", ErrUnavailable, err)
+		}
+		if n >= a.cfg.MaxFailures {
+			return "", nil, ErrTooManyAttempts
+		}
+	}
 	hash := a.dummy
 	if known {
 		hash = u.hash
 	}
 	if bcrypt.CompareHashAndPassword(hash, []byte(password)) != nil || !known {
-		a.fail(username, now)
+		if known {
+			if err := a.failures.Fail(ctx, username, now, a.cfg.FailureWindow); err != nil {
+				return "", nil, fmt.Errorf("%w: %v", ErrUnavailable, err)
+			}
+		}
 		return "", nil, ErrInvalidCredentials
 	}
-	a.mu.Lock()
-	delete(a.failures, username)
-	a.mu.Unlock()
+	if err := a.failures.Forget(ctx, username); err != nil {
+		return "", nil, fmt.Errorf("%w: %v", ErrUnavailable, err)
+	}
 	return a.issue(u, now)
-}
-
-func (a *Authenticator) locked(username string, now time.Time) bool {
-	a.mu.Lock()
-	defer a.mu.Unlock()
-	return len(a.prune(username, now)) >= a.cfg.MaxFailures
-}
-
-func (a *Authenticator) fail(username string, now time.Time) {
-	a.mu.Lock()
-	defer a.mu.Unlock()
-	a.failures[username] = append(a.prune(username, now), now)
-}
-
-// prune drops failures older than the window; the caller holds mu.
-func (a *Authenticator) prune(username string, now time.Time) []time.Time {
-	fs := a.failures[username]
-	i := 0
-	for i < len(fs) && now.Sub(fs[i]) >= a.cfg.FailureWindow {
-		i++
-	}
-	fs = fs[i:]
-	if len(fs) == 0 {
-		delete(a.failures, username)
-	} else {
-		a.failures[username] = fs
-	}
-	return fs
 }
 
 func (a *Authenticator) issue(u User, now time.Time) (string, *Claims, error) {

@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"context"
 	"errors"
 	"strings"
 	"testing"
@@ -34,7 +35,7 @@ func mustUser(t *testing.T, name string, role Role, password string) User {
 
 func TestLoginIssuesAVerifiableToken(t *testing.T) {
 	a := newAuth(t)
-	token, claims, err := a.Login("ana", "correct horse battery")
+	token, claims, err := a.Login(context.Background(), "ana", "correct horse battery")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -51,7 +52,7 @@ func TestLoginIssuesAVerifiableToken(t *testing.T) {
 func TestLoginRejectsWrongPasswordsAndUnknownUsersAlike(t *testing.T) {
 	a := newAuth(t)
 	for _, c := range [][2]string{{"ana", "wrong password!"}, {"nobody", "correct horse battery"}, {"ana", ""}} {
-		if _, _, err := a.Login(c[0], c[1]); !errors.Is(err, ErrInvalidCredentials) {
+		if _, _, err := a.Login(context.Background(), c[0], c[1]); !errors.Is(err, ErrInvalidCredentials) {
 			t.Errorf("Login(%q) = %v", c[0], err)
 		}
 	}
@@ -62,25 +63,25 @@ func TestRepeatedFailuresLockTheUsername(t *testing.T) {
 	now := time.Date(2026, 10, 14, 9, 0, 0, 0, time.UTC)
 	a.now = func() time.Time { return now }
 	for range 5 {
-		if _, _, err := a.Login("ana", "guess"); !errors.Is(err, ErrInvalidCredentials) {
+		if _, _, err := a.Login(context.Background(), "ana", "guess"); !errors.Is(err, ErrInvalidCredentials) {
 			t.Fatal(err)
 		}
 	}
-	if _, _, err := a.Login("ana", "correct horse battery"); !errors.Is(err, ErrTooManyAttempts) {
+	if _, _, err := a.Login(context.Background(), "ana", "correct horse battery"); !errors.Is(err, ErrTooManyAttempts) {
 		t.Fatalf("sixth attempt with the right password: %v", err)
 	}
-	if _, _, err := a.Login("root", "staple battery horse"); err != nil {
+	if _, _, err := a.Login(context.Background(), "root", "staple battery horse"); err != nil {
 		t.Fatalf("another user is not affected: %v", err)
 	}
 	now = now.Add(15 * time.Minute)
-	if _, _, err := a.Login("ana", "correct horse battery"); err != nil {
+	if _, _, err := a.Login(context.Background(), "ana", "correct horse battery"); err != nil {
 		t.Fatalf("after the window: %v", err)
 	}
 }
 
 func TestVerifyRejectsForgedAndStaleTokens(t *testing.T) {
 	a := newAuth(t)
-	good, _, err := a.Login("ana", "correct horse battery")
+	good, _, err := a.Login(context.Background(), "ana", "correct horse battery")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -125,7 +126,7 @@ func TestVerifyRejectsForgedAndStaleTokens(t *testing.T) {
 
 func TestRemovingAUserRevokesTheirTokens(t *testing.T) {
 	ana := mustUser(t, "ana", RoleAnalyst, "correct horse battery")
-	token, _, err := newAuth(t, ana).Login("ana", "correct horse battery")
+	token, _, err := newAuth(t, ana).Login(context.Background(), "ana", "correct horse battery")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -152,5 +153,34 @@ func TestConfigurationIsValidated(t *testing.T) {
 	}
 	if !RoleAdmin.Allows(RoleAnalyst) || RoleAnalyst.Allows(RoleAdmin) || !RoleAnalyst.Allows(RoleAnalyst) {
 		t.Error("role hierarchy")
+	}
+}
+
+func TestUnknownUsernamesAreNeverCounted(t *testing.T) {
+	a := newAuth(t)
+	for range 8 {
+		if _, _, err := a.Login(context.Background(), "nobody", "guess"); !errors.Is(err, ErrInvalidCredentials) {
+			t.Fatalf("unknown user: %v", err)
+		}
+	}
+	if n, _ := a.failures.Failures(context.Background(), "nobody", a.now(), time.Hour); n != 0 {
+		t.Errorf("%d failures recorded for an unknown username", n)
+	}
+}
+
+type brokenLog struct{ FailureLog }
+
+func (brokenLog) Failures(context.Context, string, time.Time, time.Duration) (int, error) {
+	return 0, errors.New("connection refused")
+}
+
+func TestLoginsFailClosedWhenFailuresCannotBeCounted(t *testing.T) {
+	users := []User{mustUser(t, "ana", RoleAnalyst, "correct horse battery")}
+	a, err := New(Config{Secret: secret, TTL: time.Hour, Issuer: "tradewatch", Audience: "tradewatch-api", Users: users, Failures: brokenLog{}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err := a.Login(context.Background(), "ana", "correct horse battery"); !errors.Is(err, ErrUnavailable) {
+		t.Errorf("Login = %v, want ErrUnavailable", err)
 	}
 }

@@ -59,6 +59,7 @@ paths:
           content:
             application/problem+json:
               schema: {$ref: '#/components/schemas/Problem'}
+        '503': {$ref: '#/components/responses/Unavailable'}
   /api/v1/me:
     get:
       tags: [auth]
@@ -735,7 +736,7 @@ components:
         by_symbol: {$ref: '#/components/schemas/Counts'}
     LiveView:
       type: object
-      required: [counts, recent]
+      required: [counts, recent, last_hour]
       properties:
         counts:
           type: object
@@ -745,6 +746,19 @@ components:
             by_abuse_type: {$ref: '#/components/schemas/Counts'}
             by_symbol: {$ref: '#/components/schemas/Counts'}
         recent: {type: array, items: {$ref: '#/components/schemas/AlertSummary'}}
+        last_hour:
+          type: object
+          description: Alerts stored in each of the last 60 minutes
+          required: [total, by_abuse_type, per_minute]
+          properties:
+            total: {type: integer}
+            by_abuse_type: {$ref: '#/components/schemas/Counts'}
+            per_minute:
+              type: array
+              description: "One count per minute, oldest first; the last is the minute in progress"
+              items: {type: integer}
+              minItems: 60
+              maxItems: 60
     RuleVersion:
       type: object
       required: [rule_id, version, digest, detector, name, taxonomy_code, enabled, first_seen_at, version_reused]

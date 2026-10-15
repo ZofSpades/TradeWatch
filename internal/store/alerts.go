@@ -481,3 +481,31 @@ func (s *Store) Count(ctx context.Context) (Counts, error) {
 	}
 	return c, rows.Err()
 }
+
+// MinuteCount is how many alerts of one abuse type were first stored in one
+// minute.
+type MinuteCount struct {
+	Minute    int64 // minutes since the Unix epoch
+	AbuseType string
+	Count     int64
+}
+
+// CountsByMinute returns how many alerts of each abuse type were first
+// stored in each minute since since.
+func (s *Store) CountsByMinute(ctx context.Context, since time.Time) ([]MinuteCount, error) {
+	rows, err := s.pool.Query(ctx, `SELECT floor(extract(epoch FROM first_seen_at) / 60)::bigint, abuse_type, count(*)
+		FROM alerts WHERE first_seen_at >= $1 GROUP BY 1, 2`, since)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []MinuteCount
+	for rows.Next() {
+		var c MinuteCount
+		if err := rows.Scan(&c.Minute, &c.AbuseType, &c.Count); err != nil {
+			return nil, err
+		}
+		out = append(out, c)
+	}
+	return out, rows.Err()
+}

@@ -103,6 +103,18 @@ func New(rdb redis.UniversalClient, prefix string, keep int) *Views {
 func (v *Views) recentKey() string          { return v.prefix + "live:recent" }
 func (v *Views) countsKey() string          { return v.prefix + "live:counts" }
 func (v *Views) alertKey(key string) string { return v.prefix + "live:alert:" + key }
+func (v *Views) rateKey(minute int64) string {
+	return v.prefix + "live:rate:" + strconv.FormatInt(minute, 10)
+}
+
+// rateTTL is how long a minute's alert counts are kept after the minute
+// ends: longer than the hour LastHour reads.
+const rateTTL = 2 * time.Hour
+
+func minuteOf(t time.Time) int64 { return t.Unix() / 60 }
+
+// rateExpiry is when the counts of a minute expire.
+func rateExpiry(minute int64) time.Time { return time.Unix((minute+1)*60, 0).Add(rateTTL) }
 
 // Channel is the pub/sub channel of live events.
 func (v *Views) Channel() string { return v.prefix + "live:events" }
@@ -133,6 +145,10 @@ func (v *Views) Raised(ctx context.Context, alerts []*store.Alert, traces map[st
 			p.HIncrBy(ctx, v.countsKey(), "total", 1)
 			p.HIncrBy(ctx, v.countsKey(), "type:"+a.AbuseType, 1)
 			p.HIncrBy(ctx, v.countsKey(), "symbol:"+a.Symbol, 1)
+			m := minuteOf(a.FirstSeenAt)
+			p.HIncrBy(ctx, v.rateKey(m), "total", 1)
+			p.HIncrBy(ctx, v.rateKey(m), "type:"+a.AbuseType, 1)
+			p.ExpireAt(ctx, v.rateKey(m), rateExpiry(m))
 			p.Publish(ctx, v.Channel(), ev)
 		}
 		p.ZRemRangeByRank(ctx, v.recentKey(), 0, int64(-v.keep-1))
@@ -160,8 +176,8 @@ func (v *Views) Updated(ctx context.Context, a *store.Alert) error {
 	return err
 }
 
-// Rebuild replaces the views with what Postgres holds: the totals, and the
-// most recent alerts.
+// Rebuild replaces the views with what Postgres holds: the totals, the
+// most recent alerts, and the alerts stored per minute.
 func (v *Views) Rebuild(ctx context.Context, s *store.Store) error {
 	counts, err := s.Count(ctx)
 	if err != nil {
@@ -170,6 +186,21 @@ func (v *Views) Rebuild(ctx context.Context, s *store.Store) error {
 	recent, err := s.Recent(ctx, v.keep)
 	if err != nil {
 		return err
+	}
+	now := time.Now()
+	perMinute, err := s.CountsByMinute(ctx, now.Add(-rateTTL))
+	if err != nil {
+		return err
+	}
+	rates := map[int64]map[string]any{}
+	for _, c := range perMinute {
+		f := rates[c.Minute]
+		if f == nil {
+			f = map[string]any{"total": int64(0)}
+			rates[c.Minute] = f
+		}
+		f["total"] = f["total"].(int64) + c.Count
+		f["type:"+c.AbuseType] = c.Count
 	}
 	tmpRecent, tmpCounts := v.recentKey()+":rebuild", v.countsKey()+":rebuild"
 	_, err = v.rdb.TxPipelined(ctx, func(p redis.Pipeliner) error {
@@ -189,6 +220,13 @@ func (v *Views) Rebuild(ctx context.Context, s *store.Store) error {
 			}
 			p.Set(ctx, v.alertKey(a.Key), b, v.ttl)
 			p.ZAdd(ctx, tmpRecent, redis.Z{Score: score(a), Member: a.Key})
+		}
+		for m := minuteOf(now.Add(-rateTTL)); m <= minuteOf(now); m++ {
+			p.Del(ctx, v.rateKey(m))
+			if f := rates[m]; f != nil {
+				p.HSet(ctx, v.rateKey(m), f)
+				p.ExpireAt(ctx, v.rateKey(m), rateExpiry(m))
+			}
 		}
 		p.Rename(ctx, tmpCounts, v.countsKey())
 		if len(recent) > 0 {
@@ -288,5 +326,45 @@ func (v *Views) Subscribe(ctx context.Context) (<-chan Event, error) {
 			}
 		}
 	}()
+	return out, nil
+}
+
+// LastHour is how many alerts were stored in each of the last 60 minutes.
+type LastHour struct {
+	Total  int64            `json:"total"`
+	ByType map[string]int64 `json:"by_abuse_type"`
+	// PerMinute holds one count per minute, oldest first; the last is the
+	// minute in progress.
+	PerMinute []int64 `json:"per_minute"`
+}
+
+// LastHour reads the alerts stored in the hour up to now.
+func (v *Views) LastHour(ctx context.Context, now time.Time) (LastHour, error) {
+	first := minuteOf(now) - 59
+	cmds := make([]*redis.MapStringStringCmd, 60)
+	_, err := v.rdb.Pipelined(ctx, func(p redis.Pipeliner) error {
+		for i := range cmds {
+			cmds[i] = p.HGetAll(ctx, v.rateKey(first+int64(i)))
+		}
+		return nil
+	})
+	out := LastHour{ByType: map[string]int64{}, PerMinute: make([]int64, 60)}
+	if err != nil {
+		return out, err
+	}
+	for i, c := range cmds {
+		for field, s := range c.Val() {
+			n, err := strconv.ParseInt(s, 10, 64)
+			if err != nil {
+				return out, fmt.Errorf("live: rate %s: %w", field, err)
+			}
+			if field == "total" {
+				out.PerMinute[i] = n
+				out.Total += n
+			} else if typ, ok := strings.CutPrefix(field, "type:"); ok {
+				out.ByType[typ] += n
+			}
+		}
+	}
 	return out, nil
 }

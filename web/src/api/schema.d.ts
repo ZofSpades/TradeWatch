@@ -623,6 +623,13 @@ export interface components {
                 by_symbol: components["schemas"]["Counts"];
             };
             recent: components["schemas"]["AlertSummary"][];
+            /** @description Alerts stored in each of the last 60 minutes */
+            last_hour: {
+                total: number;
+                by_abuse_type: components["schemas"]["Counts"];
+                /** @description One count per minute, oldest first; the last is the minute in progress */
+                per_minute: number[];
+            };
         };
         RuleVersion: {
             rule_id: string;
@@ -957,6 +964,7 @@ export interface operations {
                     "application/problem+json": components["schemas"]["Problem"];
                 };
             };
+            503: components["responses"]["Unavailable"];
         };
     };
     me: {

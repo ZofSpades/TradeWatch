@@ -26,8 +26,12 @@ func (s *Server) login(w http.ResponseWriter, r *http.Request) {
 		problem(w, http.StatusBadRequest, "username and password are required")
 		return
 	}
-	token, claims, err := s.auth.Login(req.Username, req.Password)
+	token, claims, err := s.auth.Login(r.Context(), req.Username, req.Password)
 	switch {
+	case errors.Is(err, auth.ErrUnavailable):
+		s.m.logins.WithLabelValues("unavailable").Inc()
+		s.log.Error("login refused: failed logins cannot be counted", "err", err)
+		problem(w, http.StatusServiceUnavailable, "logins are unavailable for now")
 	case errors.Is(err, auth.ErrTooManyAttempts):
 		s.m.logins.WithLabelValues("locked").Inc()
 		s.log.Warn("login refused: too many failures", "username", req.Username, "remote", r.RemoteAddr)
@@ -243,7 +247,13 @@ func (s *Server) liveView(w http.ResponseWriter, r *http.Request) {
 	if recent == nil {
 		recent = []live.Summary{}
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"counts": counts, "recent": recent})
+	hour, err := s.views.LastHour(r.Context(), time.Now())
+	if err != nil {
+		s.log.Warn("reading the last hour's alert counts failed", "err", err)
+		problem(w, http.StatusServiceUnavailable, "the live view is unavailable")
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"counts": counts, "recent": recent, "last_hour": hour})
 }
 
 func (s *Server) rules(w http.ResponseWriter, r *http.Request) {

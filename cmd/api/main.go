@@ -47,12 +47,6 @@ func run(log *slog.Logger) error {
 	if err != nil {
 		return err
 	}
-	authn, err := auth.New(auth.Config{
-		Secret: []byte(cfg.JWTSecret), TTL: cfg.TokenTTL, Issuer: "tradewatch", Audience: "tradewatch-api", Users: users,
-	})
-	if err != nil {
-		return err
-	}
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 	_, flush, err := tracing.Init(ctx, config.FromOS(), "api", log)
@@ -68,6 +62,15 @@ func run(log *slog.Logger) error {
 	defer st.Close()
 	rdb := redis.NewClient(&redis.Options{Addr: cfg.RedisAddr})
 	defer rdb.Close()
+	// Failed logins are counted in Redis, so the lockout holds across API
+	// instances.
+	authn, err := auth.New(auth.Config{
+		Secret: []byte(cfg.JWTSecret), TTL: cfg.TokenTTL, Issuer: "tradewatch", Audience: "tradewatch-api", Users: users,
+		Failures: auth.NewRedisFailures(rdb, cfg.RedisPrefix),
+	})
+	if err != nil {
+		return err
+	}
 
 	reg := metrics.NewRegistry()
 	srv, err := api.NewServer(st, live.New(rdb, cfg.RedisPrefix, 500), authn, cfg.SimURL, reg, log)

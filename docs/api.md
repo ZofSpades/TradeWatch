@@ -38,8 +38,11 @@ There are two accounts, `analyst` and `admin`.
     restart.
 - **Lockout.** Five failed logins for a username within 15 minutes lock that
   username until the oldest failure is 15 minutes old. Until then, logins
-  get `429` with `Retry-After`. A login for an unknown user takes as long as
-  one with a wrong password.
+  get `429` with `Retry-After`. The failures are counted in Redis, so the
+  lockout holds across API instances, and only for the two accounts: any
+  other username simply fails. If Redis cannot be read, logins get `503`
+  rather than skipping the check. A login for an unknown user takes as long
+  as one with a wrong password.
 - **Roles.** Analysts read and work alerts. Admins can also control the
   simulator.
 
@@ -62,7 +65,7 @@ curl -s "localhost:8080/api/v1/alerts?abuse_type=spoofing&limit=5" -H "Authoriza
 | `POST /api/v1/alerts/{key}/transitions` | analyst | Move the alert through the workflow |
 | `POST /api/v1/alerts/{key}/comments` | analyst | Add a note to the audit trail |
 | `GET /api/v1/stats` | analyst | Totals by status, abuse type and symbol (from Postgres) |
-| `GET /api/v1/live` | analyst | Running totals and the most recently stored alerts (from Redis) |
+| `GET /api/v1/live` | analyst | Running totals, alerts stored in each of the last 60 minutes, and the most recently stored alerts (from Redis) |
 | `GET /api/v1/system` | analyst | Throughput, consumer lag, latency percentiles, dead letters and service health (from Prometheus) |
 | `GET /api/v1/stream` | analyst | Server-sent events as alerts are raised and updated |
 | `GET /api/v1/rules` | analyst | The rule set most recently loaded by a detector |
@@ -107,8 +110,9 @@ stateDiagram-v2
 ## Live view and event stream
 
 `GET /api/v1/live` reads the views the alert sink keeps in Redis: totals by
-abuse type and symbol, and the most recently stored alerts. If Redis is
-unavailable it answers `503`; the Postgres-backed endpoints keep working.
+abuse type and symbol, the alerts stored in each of the last 60 minutes,
+and the most recently stored alerts. If Redis is unavailable it answers
+`503`; the Postgres-backed endpoints keep working.
 
 `GET /api/v1/stream` is a `text/event-stream`. Here are two events from a
 compose-stack run, shortened:

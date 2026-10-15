@@ -45,22 +45,32 @@ outcome is never overwritten.
 
 ## Redis views
 
-Redis runs without persistence and with LRU eviction, so it holds nothing
-that cannot be rebuilt from Postgres:
+Redis runs without persistence and with LRU eviction, so the live views hold
+nothing that cannot be rebuilt from Postgres. The API also counts failed
+logins here:
 
 | Key (prefix `tw:`) | Type | Contents |
 | --- | --- | --- |
 | `live:counts` | hash | `total`, `type:<abuse type>`, `symbol:<symbol>` |
 | `live:recent` | sorted set | The 500 most recently stored alert keys, scored by arrival time |
 | `live:alert:<key>` | string | The alert's summary as JSON, expiring after 24 hours |
+| `live:rate:<minute>` | hash | `total` and `type:<abuse type>`: the alerts stored in that minute (minutes since the Unix epoch), expiring two hours after it |
 | `live:events` | pub/sub channel | `alert.raised` and `alert.updated` events for the API's event stream |
+| `auth:failures:<username>` | sorted set | The account's failed logins, scored by time, expiring 15 minutes after the latest ([api.md](api.md#authentication)) |
 
-When `alertsink` starts, it rebuilds the counts and the recent list from
-Postgres. It builds the new keys under temporary names and renames them in
-one MULTI/EXEC, so readers never see a half-built view. While running, it
-updates the views only for alerts stored for the first time, after the
-database commit. If an update fails, the views are marked stale and rebuilt
+When `alertsink` starts, it rebuilds the counts, the recent list and the
+last two hours' counts per minute from Postgres, in one MULTI/EXEC. It
+builds the counts and the recent list under temporary names and renames
+them, so readers never see a half-built view. While running, it updates the
+views only for alerts stored for the first time, after the database commit. If an update fails, the views are marked stale and rebuilt
 once Redis answers again.
+
+Deduplication does not happen in Redis. The alert key is the primary key in
+Postgres, and the upsert decides in one statement whether a delivery is the
+first. A deduplication window in Redis would be a second answer, which could
+be lost or evicted and then disagree with Postgres. The counters are safe to
+lose: a rebuild restores the live views. A lost failure count, from a Redis
+restart or an eviction under memory pressure, ends a lockout early.
 
 ## alertsink
 

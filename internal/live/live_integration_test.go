@@ -88,6 +88,10 @@ func TestRaisedUpdatedAndRebuild(t *testing.T) {
 	if err != nil || len(recent) != 3 {
 		t.Fatalf("recent keeps %d alerts (err %v), want the 3 newest", len(recent), err)
 	}
+	if hour, err := v.LastHour(ctx, time.Now()); err != nil || hour.Total != 5 || hour.ByType["wash_trading"] != 3 ||
+		len(hour.PerMinute) != 60 || sum(hour.PerMinute) != 5 {
+		t.Fatalf("last hour %+v, err %v", hour, err)
+	}
 
 	a, err := s.Transition(ctx, "k04", store.StatusTriaged, "ana", "")
 	if err != nil {
@@ -114,6 +118,11 @@ func TestRaisedUpdatedAndRebuild(t *testing.T) {
 	if err := v.rdb.HDel(ctx, v.countsKey(), "type:spoofing").Err(); err != nil {
 		t.Fatal(err)
 	}
+	if keys, err := v.rdb.Keys(ctx, v.prefix+"live:rate:*").Result(); err != nil || len(keys) == 0 {
+		t.Fatalf("rate keys %v, err %v", keys, err)
+	} else if err := v.rdb.Del(ctx, keys...).Err(); err != nil {
+		t.Fatal(err)
+	}
 	if err := v.Rebuild(ctx, s); err != nil {
 		t.Fatal(err)
 	}
@@ -121,6 +130,9 @@ func TestRaisedUpdatedAndRebuild(t *testing.T) {
 	if err != nil || counts.Total != 6 || counts.ByType["spoofing"] != 2 || counts.ByType["quote_stuffing"] != 1 ||
 		counts.BySymbol["MOSS"] != 1 {
 		t.Fatalf("counts after rebuild %+v, err %v", counts, err)
+	}
+	if hour, err := v.LastHour(ctx, time.Now()); err != nil || hour.Total != 6 || hour.ByType["quote_stuffing"] != 1 {
+		t.Fatalf("last hour after rebuild %+v, err %v", hour, err)
 	}
 	recent, err = v.Recent(ctx, 10)
 	if err != nil || len(recent) != 3 || recent[0].Key != "k05" {
@@ -146,4 +158,12 @@ func TestRebuildOfAnEmptyStore(t *testing.T) {
 	if recent, err := v.Recent(ctx, 10); err != nil || len(recent) != 0 {
 		t.Fatalf("recent %+v, err %v", recent, err)
 	}
+}
+
+func sum(xs []int64) int64 {
+	var n int64
+	for _, x := range xs {
+		n += x
+	}
+	return n
 }

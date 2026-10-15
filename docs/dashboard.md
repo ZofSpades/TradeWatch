@@ -14,6 +14,10 @@ In the compose stack it is served on `http://localhost:3000`. Sign in as
 
 ## Screens
 
+A bar under the header shows on every page whether the live feed is
+connected, the alert totals by abuse type, and how many alerts arrived in
+the last hour. Live arrivals update it between refreshes.
+
 **Alerts.** The queue lists alerts newest first, with their accounts.
 - **Filters:** status (open by default), abuse type, symbol and minimum
   score. "Load more" pages through older alerts.
