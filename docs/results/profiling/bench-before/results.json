@@ -1,0 +1,745 @@
+{
+  "started": "2026-10-14T16:19:44.526328207Z",
+  "finished": "2026-10-14T16:34:26.127502974Z",
+  "warmup_seconds": 20,
+  "measure_seconds": 60,
+  "environment": {
+    "cpu": "AMD Ryzen 7 4800H with Radeon Graphics",
+    "logical_cpus": 16,
+    "memory_bytes": 16460169216,
+    "kernel": "6.18.33.2-microsoft-standard-WSL2",
+    "go": "go1.26.9",
+    "docker": "29.5.3 on Docker Desktop",
+    "commit": "a1234cb"
+  },
+  "deployment": {
+    "session": "bench-20261014T161932Z-001",
+    "detector_instances": 2,
+    "market_events_partitions": 6,
+    "symbols": 8,
+    "injection_per_symbol_hour": {
+      "marking_the_close": 0.25,
+      "momentum_ignition": 4,
+      "quote_stuffing": 6,
+      "spoofing": 6,
+      "wash_trading": 6
+    }
+  },
+  "steps": [
+    {
+      "target_rate": 1000,
+      "seconds": 60.000944818,
+      "published_per_second": 1000.0009196855177,
+      "released_per_second": 999.9675868770751,
+      "processed_per_second": 1000.0175860897391,
+      "alerts_stored": 38,
+      "lag_records": {
+        "alertsink": {
+          "end": 0,
+          "max": 0,
+          "mean": 0,
+          "slope_per_second": 0
+        },
+        "detector": {
+          "end": 0,
+          "max": 0,
+          "mean": 0,
+          "slope_per_second": 0
+        },
+        "ingest": {
+          "end": 0,
+          "max": 0,
+          "mean": 0,
+          "slope_per_second": 0
+        }
+      },
+      "end_to_end_seconds": {
+        "n": 38,
+        "p50": 0.03191023,
+        "p95": 0.037029315,
+        "p99": 0.037035134,
+        "max": 0.037035134
+      },
+      "event_to_ingest_seconds": {
+        "n": 59970,
+        "p50": 0.007814819396338445,
+        "p95": 0.014382856378710885,
+        "p99": 0.029341463414634856,
+        "max": null
+      },
+      "event_to_detector_seconds": {
+        "n": 59973,
+        "p50": 0.01938611111111111,
+        "p95": 0.029119500797811712,
+        "p99": 0.04747741935483803,
+        "max": null
+      },
+      "cpu_cores": {
+        "alertsink": 0.007833209984036821,
+        "api": 0.004166601055338736,
+        "detector": 0.15299759075203834,
+        "ingest": 0.20516343596487932,
+        "marketsim": 0.1993301944874051
+      },
+      "rss_bytes": {
+        "alertsink": 38375424,
+        "api": 32202752,
+        "detector": 127606784,
+        "ingest": 27496448,
+        "marketsim": 27787264
+      },
+      "kept_up": true,
+      "source_limited": false
+    },
+    {
+      "target_rate": 2000,
+      "seconds": 60.001064902,
+      "published_per_second": 1999.9311711549328,
+      "released_per_second": 1999.9311711549328,
+      "processed_per_second": 1999.914504784067,
+      "alerts_stored": 72,
+      "lag_records": {
+        "alertsink": {
+          "end": 0,
+          "max": 0,
+          "mean": 0,
+          "slope_per_second": 0
+        },
+        "detector": {
+          "end": 0,
+          "max": 0,
+          "mean": 0,
+          "slope_per_second": 0
+        },
+        "ingest": {
+          "end": 0,
+          "max": 0,
+          "mean": 0,
+          "slope_per_second": 0
+        }
+      },
+      "end_to_end_seconds": {
+        "n": 72,
+        "p50": 0.031995089,
+        "p95": 0.038019036,
+        "p99": 0.040708836,
+        "max": 0.040708836
+      },
+      "event_to_ingest_seconds": {
+        "n": 119941,
+        "p50": 0.007997089367571295,
+        "p95": 0.01457857735324022,
+        "p99": 0.39178773584905496,
+        "max": null
+      },
+      "event_to_detector_seconds": {
+        "n": 119940,
+        "p50": 0.019589056776556778,
+        "p95": 0.029388184070264993,
+        "p99": 0.4139675174013948,
+        "max": null
+      },
+      "cpu_cores": {
+        "alertsink": 0.009999822519483321,
+        "api": 0.0044999201337674955,
+        "detector": 0.1966631762165054,
+        "ingest": 0.25499547424682467,
+        "marketsim": 0.24332901464076093
+      },
+      "rss_bytes": {
+        "alertsink": 39911424,
+        "api": 36220928,
+        "detector": 130899968,
+        "ingest": 28614656,
+        "marketsim": 27815936
+      },
+      "kept_up": true,
+      "source_limited": false
+    },
+    {
+      "target_rate": 5000,
+      "seconds": 60.001168675,
+      "published_per_second": 4999.96927768174,
+      "released_per_second": 4999.96927768174,
+      "processed_per_second": 4999.919278655617,
+      "alerts_stored": 196,
+      "lag_records": {
+        "alertsink": {
+          "end": 0,
+          "max": 0,
+          "mean": 0,
+          "slope_per_second": 0
+        },
+        "detector": {
+          "end": 0,
+          "max": 0,
+          "mean": 0,
+          "slope_per_second": 0
+        },
+        "ingest": {
+          "end": 0,
+          "max": 0,
+          "mean": 0,
+          "slope_per_second": 0
+        }
+      },
+      "end_to_end_seconds": {
+        "n": 196,
+        "p50": 0.0320666,
+        "p95": 0.03803541,
+        "p99": 0.042204485,
+        "max": 0.042442609
+      },
+      "event_to_ingest_seconds": {
+        "n": 299847,
+        "p50": 0.008678694579450365,
+        "p95": 0.014754487909438004,
+        "p99": 0.16668536121672717,
+        "max": null
+      },
+      "event_to_detector_seconds": {
+        "n": 299844,
+        "p50": 0.020597669943857245,
+        "p95": 0.02948890323941063,
+        "p99": 0.1900938511326859,
+        "max": null
+      },
+      "cpu_cores": {
+        "alertsink": 0.01916629334720204,
+        "api": 0.005666556293955385,
+        "detector": 0.31832713298396437,
+        "ingest": 0.37482603250310775,
+        "marketsim": 0.3479932218170248
+      },
+      "rss_bytes": {
+        "alertsink": 35037184,
+        "api": 33853440,
+        "detector": 128057344,
+        "ingest": 29913088,
+        "marketsim": 27545600
+      },
+      "kept_up": true,
+      "source_limited": false
+    },
+    {
+      "target_rate": 10000,
+      "seconds": 60.001043624,
+      "published_per_second": 9999.909397575915,
+      "released_per_second": 9999.926063952691,
+      "processed_per_second": 9999.926063952691,
+      "alerts_stored": 354,
+      "lag_records": {
+        "alertsink": {
+          "end": 0,
+          "max": 0,
+          "mean": 0,
+          "slope_per_second": 0
+        },
+        "detector": {
+          "end": 0,
+          "max": 0,
+          "mean": 0,
+          "slope_per_second": 0
+        },
+        "ingest": {
+          "end": 0,
+          "max": 0,
+          "mean": 0,
+          "slope_per_second": 0
+        }
+      },
+      "end_to_end_seconds": {
+        "n": 354,
+        "p50": 0.033030762,
+        "p95": 0.039890185,
+        "p99": 0.04756221,
+        "max": 0.291607839
+      },
+      "event_to_ingest_seconds": {
+        "n": 599680,
+        "p50": 0.009378993016526829,
+        "p95": 0.01575007979572295,
+        "p99": 0.08080269290522984,
+        "max": null
+      },
+      "event_to_detector_seconds": {
+        "n": 599680,
+        "p50": 0.021479479674006777,
+        "p95": 0.029673520945428928,
+        "p99": 0.09919121318022908,
+        "max": null
+      },
+      "cpu_cores": {
+        "alertsink": 0.030832797035883767,
+        "api": 0.007666533317030559,
+        "detector": 0.4248259440241498,
+        "ingest": 0.5086578192082014,
+        "marketsim": 0.434492442554319
+      },
+      "rss_bytes": {
+        "alertsink": 35176448,
+        "api": 34078720,
+        "detector": 128438272,
+        "ingest": 31678464,
+        "marketsim": 28499968
+      },
+      "kept_up": true,
+      "source_limited": false
+    },
+    {
+      "target_rate": 20000,
+      "seconds": 60.000092145,
+      "published_per_second": 20000.319284509656,
+      "released_per_second": 19999.135952993627,
+      "processed_per_second": 19998.735953607924,
+      "alerts_stored": 729,
+      "lag_records": {
+        "alertsink": {
+          "end": 0,
+          "max": 0,
+          "mean": 0,
+          "slope_per_second": 0
+        },
+        "detector": {
+          "end": 0,
+          "max": 0,
+          "mean": 0,
+          "slope_per_second": 0
+        },
+        "ingest": {
+          "end": 0,
+          "max": 0,
+          "mean": 0,
+          "slope_per_second": 0
+        }
+      },
+      "end_to_end_seconds": {
+        "n": 729,
+        "p50": 0.035113798,
+        "p95": 0.045267244,
+        "p99": 0.098616048,
+        "max": 0.129845446
+      },
+      "event_to_ingest_seconds": {
+        "n": 1199334,
+        "p50": 0.011010133678309617,
+        "p95": 0.01964248326856224,
+        "p99": 0.05053709544706499,
+        "max": null
+      },
+      "event_to_detector_seconds": {
+        "n": 1199319,
+        "p50": 0.0235058008036665,
+        "p95": 0.040398571641528117,
+        "p99": 0.07208965917893116,
+        "max": null
+      },
+      "cpu_cores": {
+        "alertsink": 0.06033324067655895,
+        "api": 0.011666648749610853,
+        "detector": 0.6464990071391497,
+        "ingest": 0.7304988781363481,
+        "marketsim": 0.6034990731762983
+      },
+      "rss_bytes": {
+        "alertsink": 36679680,
+        "api": 32743424,
+        "detector": 124235776,
+        "ingest": 32583680,
+        "marketsim": 29798400
+      },
+      "kept_up": true,
+      "source_limited": false
+    },
+    {
+      "target_rate": 30000,
+      "seconds": 60.001663026,
+      "published_per_second": 30000.801798109813,
+      "released_per_second": 29999.385170707952,
+      "processed_per_second": 29997.50188957371,
+      "alerts_stored": 1086,
+      "lag_records": {
+        "alertsink": {
+          "end": 0,
+          "max": 0,
+          "mean": 0,
+          "slope_per_second": 0
+        },
+        "detector": {
+          "end": 0,
+          "max": 0,
+          "mean": 0,
+          "slope_per_second": 0
+        },
+        "ingest": {
+          "end": 0,
+          "max": 0,
+          "mean": 0,
+          "slope_per_second": 0
+        }
+      },
+      "end_to_end_seconds": {
+        "n": 1086,
+        "p50": 0.03601656,
+        "p95": 0.044020764,
+        "p99": 0.051087517,
+        "max": 0.101499525
+      },
+      "event_to_ingest_seconds": {
+        "n": 1799110,
+        "p50": 0.01145187507999488,
+        "p95": 0.018935326941492192,
+        "p99": 0.029040893505445697,
+        "max": null
+      },
+      "event_to_detector_seconds": {
+        "n": 1798999,
+        "p50": 0.02396416731032473,
+        "p95": 0.032383283912265796,
+        "p99": 0.04931822696036901,
+        "max": null
+      },
+      "cpu_cores": {
+        "alertsink": 0.0789978104097891,
+        "api": 0.013999611971355026,
+        "detector": 0.7713119548027513,
+        "ingest": 0.8251437960735568,
+        "marketsim": 0.6679814854903687
+      },
+      "rss_bytes": {
+        "alertsink": 34623488,
+        "api": 32018432,
+        "detector": 108515328,
+        "ingest": 32968704,
+        "marketsim": 30302208
+      },
+      "kept_up": true,
+      "source_limited": false
+    },
+    {
+      "target_rate": 40000,
+      "seconds": 60.000793779,
+      "published_per_second": 39999.4374881085,
+      "released_per_second": 40001.12079917222,
+      "processed_per_second": 40002.52078065096,
+      "alerts_stored": 1439,
+      "lag_records": {
+        "alertsink": {
+          "end": 0,
+          "max": 0,
+          "mean": 0,
+          "slope_per_second": 0
+        },
+        "detector": {
+          "end": 0,
+          "max": 0,
+          "mean": 0,
+          "slope_per_second": 0
+        },
+        "ingest": {
+          "end": 0,
+          "max": 0,
+          "mean": 0,
+          "slope_per_second": 0
+        }
+      },
+      "end_to_end_seconds": {
+        "n": 1439,
+        "p50": 0.038041756,
+        "p95": 0.047253561,
+        "p99": 0.064015596,
+        "max": 0.128432292
+      },
+      "event_to_ingest_seconds": {
+        "n": 2398817,
+        "p50": 0.012673903259032835,
+        "p95": 0.019891757218946506,
+        "p99": 0.041432323143335455,
+        "max": null
+      },
+      "event_to_detector_seconds": {
+        "n": 2398901,
+        "p50": 0.025164839491457633,
+        "p95": 0.04461528189143395,
+        "p99": 0.06267376757750055,
+        "max": null
+      },
+      "cpu_cores": {
+        "alertsink": 0.10533193982863552,
+        "api": 0.017999761869450386,
+        "detector": 0.9851536334289004,
+        "ingest": 1.0148199076211424,
+        "marketsim": 0.7971561205701969
+      },
+      "rss_bytes": {
+        "alertsink": 36122624,
+        "api": 33128448,
+        "detector": 107929600,
+        "ingest": 35311616,
+        "marketsim": 31174656
+      },
+      "kept_up": true,
+      "source_limited": false
+    },
+    {
+      "target_rate": 50000,
+      "seconds": 60.001122366,
+      "published_per_second": 49999.33137417405,
+      "released_per_second": 49995.9147714187,
+      "processed_per_second": 49995.21478451272,
+      "alerts_stored": 1821,
+      "lag_records": {
+        "alertsink": {
+          "end": 0,
+          "max": 0,
+          "mean": 0,
+          "slope_per_second": 0
+        },
+        "detector": {
+          "end": 0,
+          "max": 0,
+          "mean": 0,
+          "slope_per_second": 0
+        },
+        "ingest": {
+          "end": 0,
+          "max": 0,
+          "mean": 0,
+          "slope_per_second": 0
+        }
+      },
+      "end_to_end_seconds": {
+        "n": 1821,
+        "p50": 0.039683982,
+        "p95": 0.051799668,
+        "p99": 0.077344482,
+        "max": 0.124479266
+      },
+      "event_to_ingest_seconds": {
+        "n": 2998304,
+        "p50": 0.013888550059263927,
+        "p95": 0.02587829441604228,
+        "p99": 0.04575440713873016,
+        "max": null
+      },
+      "event_to_detector_seconds": {
+        "n": 2998278,
+        "p50": 0.026521442173000592,
+        "p95": 0.04785532288377838,
+        "p99": 0.0676857308999822,
+        "max": null
+      },
+      "cpu_cores": {
+        "alertsink": 0.13533080182182144,
+        "api": 0.02266624266966467,
+        "detector": 1.191144385000686,
+        "ingest": 1.198310917609477,
+        "marketsim": 0.9401490801439581
+      },
+      "rss_bytes": {
+        "alertsink": 34668544,
+        "api": 33026048,
+        "detector": 103288832,
+        "ingest": 35897344,
+        "marketsim": 31301632
+      },
+      "kept_up": true,
+      "source_limited": false
+    },
+    {
+      "target_rate": 60000,
+      "seconds": 60.00116864,
+      "published_per_second": 59999.698032548185,
+      "released_per_second": 60001.76465896248,
+      "processed_per_second": 59997.41474368723,
+      "alerts_stored": 2199,
+      "lag_records": {
+        "alertsink": {
+          "end": 0,
+          "max": 0,
+          "mean": 0,
+          "slope_per_second": 0
+        },
+        "detector": {
+          "end": 0,
+          "max": 0,
+          "mean": 0,
+          "slope_per_second": 0
+        },
+        "ingest": {
+          "end": 0,
+          "max": 0,
+          "mean": 0,
+          "slope_per_second": 0
+        }
+      },
+      "end_to_end_seconds": {
+        "n": 2199,
+        "p50": 0.041646637,
+        "p95": 0.060899725,
+        "p99": 0.079047137,
+        "max": 0.107502393
+      },
+      "event_to_ingest_seconds": {
+        "n": 3598378,
+        "p50": 0.015763312586445366,
+        "p95": 0.029527453412971458,
+        "p99": 0.04802381657482174,
+        "max": null
+      },
+      "event_to_detector_seconds": {
+        "n": 3598132,
+        "p50": 0.029158641091653757,
+        "p95": 0.04970073767507294,
+        "p99": 0.07238420138121957,
+        "max": null
+      },
+      "cpu_cores": {
+        "alertsink": 0.16083020078990246,
+        "api": 0.026499483860719694,
+        "detector": 1.4139724595870808,
+        "ingest": 1.3668067115834093,
+        "marketsim": 1.0876454822330606
+      },
+      "rss_bytes": {
+        "alertsink": 35188736,
+        "api": 32403456,
+        "detector": 105140224,
+        "ingest": 38252544,
+        "marketsim": 32788480
+      },
+      "kept_up": true,
+      "source_limited": false
+    },
+    {
+      "target_rate": 80000,
+      "seconds": 60.001085057,
+      "published_per_second": 79999.91992544809,
+      "released_per_second": 79982.07024824672,
+      "processed_per_second": 79983.42022383337,
+      "alerts_stored": 2872,
+      "lag_records": {
+        "alertsink": {
+          "end": 0,
+          "max": 0,
+          "mean": 0,
+          "slope_per_second": 0
+        },
+        "detector": {
+          "end": 0,
+          "max": 0,
+          "mean": 0,
+          "slope_per_second": 0
+        },
+        "ingest": {
+          "end": 0,
+          "max": 0,
+          "mean": 0,
+          "slope_per_second": 0
+        }
+      },
+      "end_to_end_seconds": {
+        "n": 2872,
+        "p50": 0.053078632,
+        "p95": 0.193266267,
+        "p99": 0.318617939,
+        "max": 0.392044331
+      },
+      "event_to_ingest_seconds": {
+        "n": 4796526,
+        "p50": 0.02496673215716269,
+        "p95": 0.14888955999707157,
+        "p99": 0.27049856148672313,
+        "max": null
+      },
+      "event_to_detector_seconds": {
+        "n": 4796598,
+        "p50": 0.043826470599844486,
+        "p95": 0.18306612581475715,
+        "p99": 0.31539475811107087,
+        "max": null
+      },
+      "cpu_cores": {
+        "alertsink": 0.2028296653041976,
+        "api": 0.03133276670270268,
+        "detector": 1.7794678195997695,
+        "ingest": 1.6283038866244939,
+        "marketsim": 1.3519755504910853
+      },
+      "rss_bytes": {
+        "alertsink": 35074048,
+        "api": 34054144,
+        "detector": 104431616,
+        "ingest": 39235584,
+        "marketsim": 33329152
+      },
+      "kept_up": true,
+      "source_limited": false
+    },
+    {
+      "target_rate": 100000,
+      "seconds": 60.001456535,
+      "published_per_second": 99998.82247025188,
+      "released_per_second": 100815.53597738841,
+      "processed_per_second": 100961.2157742597,
+      "alerts_stored": 3567,
+      "lag_records": {
+        "alertsink": {
+          "end": 0,
+          "max": 0,
+          "mean": 0,
+          "slope_per_second": 0
+        },
+        "detector": {
+          "end": 0,
+          "max": 0,
+          "mean": 0,
+          "slope_per_second": 0
+        },
+        "ingest": {
+          "end": 6409,
+          "max": 29403,
+          "mean": 2962.3870967741937,
+          "slope_per_second": -88.77092635491233
+        }
+      },
+      "end_to_end_seconds": {
+        "n": 3567,
+        "p50": 0.396848339,
+        "p95": 0.955788586,
+        "p99": 1.410684375,
+        "max": 1.689818875
+      },
+      "event_to_ingest_seconds": {
+        "n": 6046153,
+        "p50": 0.33755055188164507,
+        "p95": 0.9039520655819722,
+        "p99": 1.329025468299711,
+        "max": null
+      },
+      "event_to_detector_seconds": {
+        "n": 6054891,
+        "p50": 0.38139094954442976,
+        "p95": 0.9527724592190132,
+        "p99": 1.4227584991695417,
+        "max": null
+      },
+      "cpu_cores": {
+        "alertsink": 0.22366123715966557,
+        "api": 0.033665849408533885,
+        "detector": 1.8737878460403288,
+        "ingest": 1.5727951528135349,
+        "marketsim": 1.533629436917468
+      },
+      "rss_bytes": {
+        "alertsink": 35975168,
+        "api": 30752768,
+        "detector": 109486080,
+        "ingest": 125575168,
+        "marketsim": 33353728
+      },
+      "kept_up": true,
+      "source_limited": false
+    }
+  ]
+}

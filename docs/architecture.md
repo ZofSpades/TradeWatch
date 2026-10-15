@@ -54,6 +54,14 @@ ground truth ([detectors.md](detectors.md#evaluation)). The replay tool
 reruns detection over marketsim's recordings, which carry their reference
 data and labels.
 
+Two more tools exercise the running stack:
+
+- `bench` drives marketsim at rising rates and measures every stage
+  ([performance.md](performance.md)).
+- `chaos` checks the alerts stored while consumers are killed and
+  restarted. It compares them with a replay of the session's recording
+  ([delivery-semantics.md](delivery-semantics.md#the-chaos-test)).
+
 ## Services
 
 | Service | Role | Ports (compose) |

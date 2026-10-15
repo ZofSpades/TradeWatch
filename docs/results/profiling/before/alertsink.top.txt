@@ -1,0 +1,49 @@
+File: alertsink
+Build ID: e07fc6f4fc454ce52760ac52f7da4ca14041f538
+Type: cpu
+Time: 2026-10-14 16:35:57 UTC
+Duration: 30s, Total samples = 4.64s (15.47%)
+Showing nodes accounting for 3.09s, 66.59% of 4.64s total
+Dropped 395 nodes (cum <= 0.02s)
+Showing top 40 nodes out of 266
+      flat  flat%   sum%        cum   cum%
+     1.34s 28.88% 28.88%      1.34s 28.88%  internal/runtime/syscall/linux.Syscall6
+     0.78s 16.81% 45.69%      0.78s 16.81%  runtime.futex
+     0.11s  2.37% 48.06%      0.11s  2.37%  runtime.write1
+     0.07s  1.51% 49.57%      0.07s  1.51%  runtime.(*mspan).writeHeapBitsSmall
+     0.06s  1.29% 50.86%      0.06s  1.29%  runtime.nextFreeFast (inline)
+     0.05s  1.08% 51.94%      0.05s  1.08%  runtime.memmove
+     0.05s  1.08% 53.02%      0.07s  1.51%  runtime.stealWork
+     0.04s  0.86% 53.88%      0.04s  0.86%  runtime.findfunc
+     0.04s  0.86% 54.74%      0.21s  4.53%  runtime.mallocgcSmallScanNoHeader
+     0.03s  0.65% 55.39%      0.04s  0.86%  runtime.(*spanSet).pop
+     0.03s  0.65% 56.03%      0.03s  0.65%  runtime.memclrNoHeapPointers
+     0.03s  0.65% 56.68%      0.15s  3.23%  runtime.newobject
+     0.03s  0.65% 57.33%      0.04s  0.86%  runtime.tryDeferToSpanScan
+     0.03s  0.65% 57.97%      0.05s  1.08%  runtime.unlock2
+     0.02s  0.43% 58.41%      0.06s  1.29%  context.AfterFunc.func1
+     0.02s  0.43% 58.84%      0.07s  1.51%  encoding/json.structEncoder.encode
+     0.02s  0.43% 59.27%      0.21s  4.53%  github.com/jackc/pgx/v5/pgconn/internal/bgreader.(*BGReader).Read
+     0.02s  0.43% 59.70%      0.06s  1.29%  github.com/twmb/franz-go/pkg/kgo.growStack
+     0.02s  0.43% 60.13%      0.13s  2.80%  google.golang.org/protobuf/internal/impl.(*MessageInfo).unmarshalPointerEager
+     0.02s  0.43% 60.56%      0.09s  1.94%  google.golang.org/protobuf/proto.MarshalOptions.marshal
+     0.02s  0.43% 60.99%      0.06s  1.29%  runtime.(*stkframe).getStackMap
+     0.02s  0.43% 61.42%      0.03s  0.65%  runtime.(*unwinder).resolveInternal
+     0.02s  0.43% 61.85%      0.09s  1.94%  runtime.growslice
+     0.02s  0.43% 62.28%      0.07s  1.51%  runtime.makeslice
+     0.02s  0.43% 62.72%      0.25s  5.39%  runtime.netpoll
+     0.02s  0.43% 63.15%      0.04s  0.86%  runtime.pcvalue
+     0.02s  0.43% 63.58%      0.17s  3.66%  runtime.reentersyscall
+     0.02s  0.43% 64.01%      0.03s  0.65%  runtime.selectgo
+     0.01s  0.22% 64.22%      0.04s  0.86%  context.(*cancelCtx).cancel
+     0.01s  0.22% 64.44%      0.08s  1.72%  encoding/json.(*encodeState).reflectValue
+     0.01s  0.22% 64.66%      1.22s 26.29%  github.com/ZofSpades/tradewatch/internal/alertsink.(*Service).storeAlerts
+     0.01s  0.22% 64.87%      0.06s  1.29%  github.com/ZofSpades/tradewatch/internal/alertsink.endSpans
+     0.01s  0.22% 65.09%      0.37s  7.97%  github.com/jackc/pgx/v5.(*Conn).Exec
+     0.01s  0.22% 65.30%      0.40s  8.62%  github.com/jackc/pgx/v5.(*Conn).SendBatch
+     0.01s  0.22% 65.52%      0.07s  1.51%  github.com/jackc/pgx/v5.(*pipelineBatchResults).QueryRow
+     0.01s  0.22% 65.73%      0.25s  5.39%  github.com/jackc/pgx/v5/pgconn.(*PgConn).peekMessage
+     0.01s  0.22% 65.95%      0.05s  1.08%  github.com/jackc/pgx/v5/pgconn/ctxwatch.(*ContextWatcher).Unwatch
+     0.01s  0.22% 66.16%      0.03s  0.65%  github.com/jackc/pgx/v5/pgconn/ctxwatch.(*ContextWatcher).Watch
+     0.01s  0.22% 66.38%      0.24s  5.17%  github.com/jackc/pgx/v5/pgproto3.(*Frontend).Receive
+     0.01s  0.22% 66.59%      0.22s  4.74%  github.com/jackc/pgx/v5/pgproto3.(*chunkReader).Next

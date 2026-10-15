@@ -1,0 +1,49 @@
+File: alertsink
+Build ID: cb4891d011a693f6a8e7aedc8b30025e6f105c86
+Type: cpu
+Time: 2026-10-14 16:47:31 UTC
+Duration: 30s, Total samples = 4.58s (15.27%)
+Showing nodes accounting for 2.95s, 64.41% of 4.58s total
+Dropped 365 nodes (cum <= 0.02s)
+Showing top 40 nodes out of 294
+      flat  flat%   sum%        cum   cum%
+     1.17s 25.55% 25.55%      1.17s 25.55%  internal/runtime/syscall/linux.Syscall6
+     0.76s 16.59% 42.14%      0.76s 16.59%  runtime.futex
+     0.09s  1.97% 44.10%      0.09s  1.97%  runtime.memclrNoHeapPointers
+     0.08s  1.75% 45.85%      0.18s  3.93%  runtime.newobject
+     0.08s  1.75% 47.60%      0.08s  1.75%  runtime.nextFreeFast (inline)
+     0.06s  1.31% 48.91%      0.06s  1.31%  runtime.write1
+     0.05s  1.09% 50.00%      0.05s  1.09%  runtime.(*mspan).writeHeapBitsSmall
+     0.05s  1.09% 51.09%      0.60s 13.10%  runtime.findRunnable
+     0.05s  1.09% 52.18%      0.06s  1.31%  runtime.unlock2
+     0.04s  0.87% 53.06%      0.05s  1.09%  runtime.(*unwinder).resolveInternal
+     0.04s  0.87% 53.93%      0.12s  2.62%  runtime.mallocgcSmallNoscan
+     0.03s  0.66% 54.59%      0.31s  6.77%  github.com/jackc/pgx/v5/pgconn/internal/bgreader.(*BGReader).Read
+     0.03s  0.66% 55.24%      0.05s  1.09%  runtime.(*stkframe).getStackMap
+     0.03s  0.66% 55.90%      0.03s  0.66%  runtime.nanotime (inline)
+     0.03s  0.66% 56.55%      0.03s  0.66%  runtime.step
+     0.02s  0.44% 56.99%      0.03s  0.66%  context.(*cancelCtx).Done
+     0.02s  0.44% 57.42%      0.03s  0.66%  context.value
+     0.02s  0.44% 57.86%      0.07s  1.53%  google.golang.org/protobuf/internal/impl.(*MessageInfo).sizePointerSlow
+     0.02s  0.44% 58.30%      0.08s  1.75%  google.golang.org/protobuf/internal/impl.(*MessageInfo).unmarshalPointerEager
+     0.02s  0.44% 58.73%      0.57s 12.45%  internal/poll.(*FD).Read
+     0.02s  0.44% 59.17%      0.05s  1.09%  runtime.(*mcache).prepareForSweep
+     0.02s  0.44% 59.61%      0.12s  2.62%  runtime.markroot
+     0.02s  0.44% 60.04%      0.12s  2.62%  runtime.notesleep
+     0.02s  0.44% 60.48%      0.04s  0.87%  runtime.scanObjectsSmall
+     0.02s  0.44% 60.92%      0.07s  1.53%  runtime.selectgo
+     0.02s  0.44% 61.35%      0.09s  1.97%  runtime.stealWork
+     0.01s  0.22% 61.57%      0.08s  1.75%  bufio.(*Reader).fill
+     0.01s  0.22% 61.79%      0.03s  0.66%  context.(*cancelCtx).Value
+     0.01s  0.22% 62.01%      0.04s  0.87%  context.AfterFunc.func1
+     0.01s  0.22% 62.23%      2.34s 51.09%  github.com/ZofSpades/tradewatch/internal/alertsink.(*Service).Run
+     0.01s  0.22% 62.45%      2.16s 47.16%  github.com/ZofSpades/tradewatch/internal/alertsink.(*Service).process
+     0.01s  0.22% 62.66%      1.43s 31.22%  github.com/ZofSpades/tradewatch/internal/alertsink.(*Service).storeAlerts
+     0.01s  0.22% 62.88%      0.08s  1.75%  github.com/ZofSpades/tradewatch/internal/live.(*Views).Raised.func1
+     0.01s  0.22% 63.10%      0.53s 11.57%  github.com/jackc/pgx/v5.(*Conn).SendBatch
+     0.01s  0.22% 63.32%      0.52s 11.35%  github.com/jackc/pgx/v5.(*Conn).sendBatchExtendedWithDescription
+     0.01s  0.22% 63.54%      0.06s  1.31%  github.com/jackc/pgx/v5.(*ExtendedQueryBuilder).Build
+     0.01s  0.22% 63.76%      0.03s  0.66%  github.com/jackc/pgx/v5.(*ExtendedQueryBuilder).encodeExtendedParamValue
+     0.01s  0.22% 63.97%      0.13s  2.84%  github.com/jackc/pgx/v5/pgconn.(*MultiResultReader).NextResult
+     0.01s  0.22% 64.19%      0.33s  7.21%  github.com/jackc/pgx/v5/pgconn.(*PgConn).peekMessage
+     0.01s  0.22% 64.41%      0.36s  7.86%  github.com/jackc/pgx/v5/pgconn.(*Pipeline).Flush

@@ -1,0 +1,49 @@
+File: marketsim
+Build ID: ada0e6cb5f062922a4ab369fb1cd0dd27ab5303e
+Type: cpu
+Time: 2026-10-14 16:35:57 UTC
+Duration: 30s, Total samples = 33.75s (112.49%)
+Showing nodes accounting for 18.71s, 55.44% of 33.75s total
+Dropped 673 nodes (cum <= 0.17s)
+Showing top 40 nodes out of 255
+      flat  flat%   sum%        cum   cum%
+     2.55s  7.56%  7.56%      2.55s  7.56%  runtime.futex
+     1.06s  3.14% 10.70%      1.06s  3.14%  internal/runtime/syscall/linux.Syscall6
+     1.04s  3.08% 13.78%      1.04s  3.08%  runtime.memmove
+     0.96s  2.84% 16.62%      0.96s  2.84%  runtime.memclrNoHeapPointers
+     0.70s  2.07% 18.70%      1.42s  4.21%  runtime.scanObjectsSmall
+     0.69s  2.04% 20.74%      0.69s  2.04%  math.archExp
+     0.66s  1.96% 22.70%      1.42s  4.21%  runtime.scanObject
+     0.63s  1.87% 24.56%      0.63s  1.87%  time.runtimeNow
+     0.55s  1.63% 26.19%      3.50s 10.37%  runtime.mallocgcSmallScanNoHeader
+     0.51s  1.51% 27.70%      0.51s  1.51%  runtime.spanClass.sizeclass (inline)
+     0.50s  1.48% 29.19%      1.90s  5.63%  github.com/twmb/franz-go/pkg/kgo.promisedRec.appendTo
+     0.50s  1.48% 30.67%      0.50s  1.48%  runtime.nextFreeFast (inline)
+     0.45s  1.33% 32.00%      0.77s  2.28%  github.com/ZofSpades/tradewatch/internal/orderbook.(*Book).Order
+     0.45s  1.33% 33.33%      0.45s  1.33%  google.golang.org/protobuf/encoding/protowire.AppendVarint
+     0.39s  1.16% 34.49%      0.39s  1.16%  github.com/klauspost/compress/s2.encodeSnappyBlockAsm64K
+     0.39s  1.16% 35.64%      0.39s  1.16%  github.com/twmb/franz-go/pkg/kgo.(*Record).userSize (inline)
+     0.38s  1.13% 36.77%      1.07s  3.17%  runtime.tryDeferToSpanScan
+     0.38s  1.13% 37.90%      0.38s  1.13%  runtime.write1
+     0.37s  1.10% 38.99%      0.52s  1.54%  runtime.(*mspan).writeHeapBitsSmall
+     0.35s  1.04% 40.03%      0.75s  2.22%  github.com/ZofSpades/tradewatch/internal/orderbook.(*bookSide).top
+     0.34s  1.01% 41.04%     11.76s 34.84%  github.com/ZofSpades/tradewatch/internal/marketsim.(*publisher).Emit
+     0.34s  1.01% 42.04%      0.82s  2.43%  google.golang.org/protobuf/internal/impl.(*MessageInfo).sizePointerSlow
+     0.33s  0.98% 43.02%      5.84s 17.30%  runtime.mallocgc
+     0.32s  0.95% 43.97%      1.45s  4.30%  github.com/ZofSpades/tradewatch/internal/sim.ToProto
+     0.32s  0.95% 44.92%      0.32s  0.95%  internal/runtime/maps.ctrlGroup.matchH2 (inline)
+     0.32s  0.95% 45.87%      0.32s  0.95%  runtime.tgkill
+     0.31s  0.92% 46.79%      3.22s  9.54%  google.golang.org/protobuf/proto.MarshalOptions.marshal
+     0.29s  0.86% 47.64%      0.44s  1.30%  github.com/twmb/franz-go/pkg/kbin.AppendVarint (inline)
+     0.28s  0.83% 48.47%      2.18s  6.46%  runtime.growslice
+     0.27s   0.8% 49.27%      1.35s  4.00%  google.golang.org/protobuf/internal/impl.(*MessageInfo).marshalAppendPointer
+     0.26s  0.77% 50.04%      0.26s  0.77%  runtime.(*mspan).moveInlineMarks
+     0.25s  0.74% 50.79%      0.31s  0.92%  runtime.(*spanSet).push
+     0.22s  0.65% 51.44%      1.37s  4.06%  runtime.mallocgcSmallNoscan
+     0.22s  0.65% 52.09%      0.30s  0.89%  runtime.typePointers.next
+     0.20s  0.59% 52.68%      0.20s  0.59%  runtime.madvise
+     0.19s  0.56% 53.24%      1.20s  3.56%  github.com/twmb/franz-go/pkg/kgo.(*Client).doPartition
+     0.19s  0.56% 53.81%      0.19s  0.56%  internal/runtime/atomic.(*UnsafePointer).Load (inline)
+     0.19s  0.56% 54.37%      0.44s  1.30%  runtime.(*spanSet).pop
+     0.18s  0.53% 54.90%      2.47s  7.32%  github.com/ZofSpades/tradewatch/internal/kafka.EventMeta.Headers
+     0.18s  0.53% 55.44%      0.19s  0.56%  internal/sync.(*Mutex).Unlock (inline)

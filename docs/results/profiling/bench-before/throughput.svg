@@ -1,0 +1,67 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="680" height="380" viewBox="0 0 680 380" font-family="Helvetica, Arial, sans-serif" font-size="12" fill="#1f2937">
+<rect width="680" height="380" fill="#ffffff"/>
+<text x="72" y="24" font-size="15" font-weight="bold">Events per second at each stage</text>
+<line x1="72.0" x2="656.0" y1="324.0" y2="324.0" stroke="#e5e7eb"/>
+<text x="64.0" y="324.0" text-anchor="end" dominant-baseline="middle">0</text>
+<line x1="72.0" x2="656.0" y1="239.3" y2="239.3" stroke="#e5e7eb"/>
+<text x="64.0" y="239.3" text-anchor="end" dominant-baseline="middle">50k</text>
+<line x1="72.0" x2="656.0" y1="154.7" y2="154.7" stroke="#e5e7eb"/>
+<text x="64.0" y="154.7" text-anchor="end" dominant-baseline="middle">100k</text>
+<line x1="72.0" x2="656.0" y1="70.0" y2="70.0" stroke="#e5e7eb"/>
+<text x="64.0" y="70.0" text-anchor="end" dominant-baseline="middle">150k</text>
+<text x="72.0" y="344.0" text-anchor="middle">1k</text>
+<text x="130.4" y="344.0" text-anchor="middle">2k</text>
+<text x="188.8" y="344.0" text-anchor="middle">5k</text>
+<text x="247.2" y="344.0" text-anchor="middle">10k</text>
+<text x="305.6" y="344.0" text-anchor="middle">20k</text>
+<text x="364.0" y="344.0" text-anchor="middle">30k</text>
+<text x="422.4" y="344.0" text-anchor="middle">40k</text>
+<text x="480.8" y="344.0" text-anchor="middle">50k</text>
+<text x="539.2" y="344.0" text-anchor="middle">60k</text>
+<text x="597.6" y="344.0" text-anchor="middle">80k</text>
+<text x="656.0" y="344.0" text-anchor="middle">100k</text>
+<text x="364.0" y="366.0" text-anchor="middle">target rate, events per second</text>
+<text transform="translate(16 197.0) rotate(-90)" text-anchor="middle">events per second</text>
+<circle cx="72.0" cy="322.3" r="3.5" fill="#9ca3af"/>
+<circle cx="130.4" cy="320.6" r="3.5" fill="#9ca3af"/>
+<circle cx="188.8" cy="315.5" r="3.5" fill="#9ca3af"/>
+<circle cx="247.2" cy="307.1" r="3.5" fill="#9ca3af"/>
+<circle cx="305.6" cy="290.1" r="3.5" fill="#9ca3af"/>
+<circle cx="364.0" cy="273.2" r="3.5" fill="#9ca3af"/>
+<circle cx="422.4" cy="256.3" r="3.5" fill="#9ca3af"/>
+<circle cx="480.8" cy="239.3" r="3.5" fill="#9ca3af"/>
+<circle cx="539.2" cy="222.4" r="3.5" fill="#9ca3af"/>
+<circle cx="597.6" cy="188.5" r="3.5" fill="#9ca3af"/>
+<circle cx="656.0" cy="154.7" r="3.5" fill="#9ca3af"/>
+<path d="M72.0 322.3 L130.4 320.6 L188.8 315.5 L247.2 307.1 L305.6 290.1 L364.0 273.2 L422.4 256.3 L480.8 239.3 L539.2 222.4 L597.6 188.5 L656.0 154.7" fill="none" stroke="#9ca3af" stroke-width="2" stroke-dasharray="4 4"/>
+<line x1="72.0" x2="94.0" y1="46" y2="46" stroke="#9ca3af" stroke-width="2" stroke-dasharray="4 4"/>
+<text x="100.0" y="46" dominant-baseline="middle">target</text>
+<circle cx="72.0" cy="322.3" r="3.5" fill="#2563eb"/>
+<circle cx="130.4" cy="320.6" r="3.5" fill="#2563eb"/>
+<circle cx="188.8" cy="315.5" r="3.5" fill="#2563eb"/>
+<circle cx="247.2" cy="307.1" r="3.5" fill="#2563eb"/>
+<circle cx="305.6" cy="290.1" r="3.5" fill="#2563eb"/>
+<circle cx="364.0" cy="273.2" r="3.5" fill="#2563eb"/>
+<circle cx="422.4" cy="256.3" r="3.5" fill="#2563eb"/>
+<circle cx="480.8" cy="239.3" r="3.5" fill="#2563eb"/>
+<circle cx="539.2" cy="222.4" r="3.5" fill="#2563eb"/>
+<circle cx="597.6" cy="188.5" r="3.5" fill="#2563eb"/>
+<circle cx="656.0" cy="154.7" r="3.5" fill="#2563eb"/>
+<path d="M72.0 322.3 L130.4 320.6 L188.8 315.5 L247.2 307.1 L305.6 290.1 L364.0 273.2 L422.4 256.3 L480.8 239.3 L539.2 222.4 L597.6 188.5 L656.0 154.7" fill="none" stroke="#2563eb" stroke-width="2"/>
+<line x1="222.0" x2="244.0" y1="46" y2="46" stroke="#2563eb" stroke-width="2"/>
+<text x="250.0" y="46" dominant-baseline="middle">published</text>
+<circle cx="72.0" cy="322.3" r="3.5" fill="#16a34a"/>
+<circle cx="130.4" cy="320.6" r="3.5" fill="#16a34a"/>
+<circle cx="188.8" cy="315.5" r="3.5" fill="#16a34a"/>
+<circle cx="247.2" cy="307.1" r="3.5" fill="#16a34a"/>
+<circle cx="305.6" cy="290.1" r="3.5" fill="#16a34a"/>
+<circle cx="364.0" cy="273.2" r="3.5" fill="#16a34a"/>
+<circle cx="422.4" cy="256.3" r="3.5" fill="#16a34a"/>
+<circle cx="480.8" cy="239.3" r="3.5" fill="#16a34a"/>
+<circle cx="539.2" cy="222.4" r="3.5" fill="#16a34a"/>
+<circle cx="597.6" cy="188.6" r="3.5" fill="#16a34a"/>
+<circle cx="656.0" cy="153.0" r="3.5" fill="#16a34a"/>
+<path d="M72.0 322.3 L130.4 320.6 L188.8 315.5 L247.2 307.1 L305.6 290.1 L364.0 273.2 L422.4 256.3 L480.8 239.3 L539.2 222.4 L597.6 188.6 L656.0 153.0" fill="none" stroke="#16a34a" stroke-width="2"/>
+<line x1="372.0" x2="394.0" y1="46" y2="46" stroke="#16a34a" stroke-width="2"/>
+<text x="400.0" y="46" dominant-baseline="middle">processed by detectors</text>
+</svg>

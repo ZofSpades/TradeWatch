@@ -35,6 +35,22 @@ simulated market, not performance on a real venue.
 [detectors.md](docs/detectors.md#evaluation) explains what the comparison
 shows, including where the baseline does as well.
 
+**Throughput and latency.** `make bench` raises marketsim's event rate step
+by step against the whole compose stack, on one laptop
+([docs/results/bench](docs/results/bench/README.md)). The pipeline
+sustained 80,001 events per second. At that rate, an alert was stored in
+Postgres 52.3 ms after the event that triggered it at the median and
+177 ms at the 99th percentile (2,884 alerts). At 100,000 events per second
+it reached the limit of ingest's single processing loop
+([performance.md](docs/performance.md)).
+
+**Reliability.** `make chaos` kills, restarts and rescales the consumers
+mid-stream and re-publishes old records
+([docs/results/chaos](docs/results/chaos/README.md)). Afterwards Postgres
+held exactly the 477 alerts that an offline replay of the session
+produces: none lost, none extra, each raised once. The alert key absorbed
+72 duplicate deliveries.
+
 ## Status
 
 The project is being built in phases. This table tracks what exists today.
@@ -50,7 +66,7 @@ The project is being built in phases. This table tracks what exists today.
 | 7 | `alertsink`, Postgres, `api` | done |
 | 8 | `evaluator` and first results | done |
 | 9 | Dashboard | done |
-| 10 | Observability, benchmarks, chaos tests, profiling | planned |
+| 10 | Observability, benchmarks, chaos tests, profiling | done |
 | 11 | Docs, polish, `make demo` | planned |
 
 ## Quick start
@@ -70,6 +86,9 @@ make replay  # list session recordings; REC=<file> [COMPARE=<rules dir>] replays
 make web-test       # dashboard type-check, tests and build (also part of make test)
 make web-e2e        # drive the running dashboard in a real browser (changes data)
 make bench          # load-test the pipeline at rising event rates; writes docs/results/bench
+make chaos          # kill, restart and rescale consumers mid-stream; writes docs/results/chaos (changes data)
+make profile        # CPU-profile every service under load (PROFILE_RATE, PROFILE_OUT)
+make bench-compare  # benchmark two commits side by side (NAME, OLD, NEW, PKG, BENCH)
 make bench-micro    # Go micro-benchmarks, saved under docs/results/microbench
 make mutation-test  # check the order book tests catch injected engine bugs
 make help    # list all targets
@@ -102,4 +121,5 @@ curl -s localhost:8080/api/v1/stats -H "Authorization: Bearer $TOKEN" | jq
 - [API](docs/api.md)
 - [Delivery semantics, end to end](docs/delivery-semantics.md)
 - [Observability: metrics, dashboards, alerting rules, tracing, profiling](docs/observability.md)
+- [Performance: benchmarks, limits and the hotspot fixed](docs/performance.md)
 - [Architecture decision records](docs/adr/README.md)

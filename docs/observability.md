@@ -182,3 +182,9 @@ docker compose run --rm --no-deps toolbox \
 Heap, allocation, goroutine, block and mutex profiles, and execution
 traces, are under the same prefix. Admin ports are not published outside
 the compose network.
+
+`make profile` profiles every service at once under a fixed load, and
+saves the raw profiles with flat and cumulative summaries. For example,
+`make profile PROFILE_RATE=80000 PROFILE_OUT=tmp/profiles/x` runs at
+80,000 events/s. That is how the hotspot described in
+[performance.md](performance.md#the-hotspot-fixed) was found.

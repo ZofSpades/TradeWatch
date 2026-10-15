@@ -1,0 +1,209 @@
+File: ingest
+Build ID: f1f3f39d461349302b3bb5a9a8cd92db0f4a4e70
+Type: cpu
+Time: 2026-10-14 16:47:31 UTC
+Duration: 30s, Total samples = 42.63s (142.10%)
+Showing nodes accounting for 26.76s, 62.77% of 42.63s total
+Dropped 792 nodes (cum <= 0.21s)
+Showing top 200 nodes out of 255
+      flat  flat%   sum%        cum   cum%
+     0.01s 0.023% 0.023%     23.63s 55.43%  github.com/ZofSpades/tradewatch/internal/ingest.(*Service).Run
+         0     0% 0.023%     23.63s 55.43%  golang.org/x/sync/errgroup.(*Group).Go.func1
+         0     0% 0.023%     23.63s 55.43%  main.run.func2
+         0     0% 0.023%     22.73s 53.32%  github.com/ZofSpades/tradewatch/internal/ingest.(*Service).handle
+     0.04s 0.094%  0.12%     22.72s 53.30%  github.com/twmb/franz-go/pkg/kgo.Fetches.EachPartition (inline)
+     0.08s  0.19%   0.3%     22.68s 53.20%  github.com/ZofSpades/tradewatch/internal/ingest.(*Service).handle.func2 (inline)
+     0.33s  0.77%  1.08%     22.59s 52.99%  github.com/ZofSpades/tradewatch/internal/ingest.(*Service).handleRecord
+     0.12s  0.28%  1.36%     13.23s 31.03%  github.com/ZofSpades/tradewatch/internal/ingest.(*Sequencer).Observe
+     0.24s  0.56%  1.92%     12.15s 28.50%  github.com/ZofSpades/tradewatch/internal/ingest.(*Sequencer).release
+     0.22s  0.52%  2.44%      9.77s 22.92%  github.com/ZofSpades/tradewatch/internal/ingest.(*Service).emit
+     0.03s  0.07%  2.51%      8.27s 19.40%  runtime.systemstack
+     0.05s  0.12%  2.63%      6.68s 15.67%  github.com/ZofSpades/tradewatch/internal/ingest.Parse
+     0.21s  0.49%  3.12%      5.95s 13.96%  runtime.mallocgc
+         0     0%  3.12%      5.75s 13.49%  runtime.gcBgMarkWorker
+         0     0%  3.12%      5.04s 11.82%  runtime.gcBgMarkWorker.func2
+     0.08s  0.19%  3.31%      5.04s 11.82%  runtime.gcDrain
+     0.04s 0.094%  3.40%      5.02s 11.78%  github.com/ZofSpades/tradewatch/internal/events.Marshal (inline)
+     0.23s  0.54%  3.94%      4.99s 11.71%  google.golang.org/protobuf/proto.MarshalOptions.marshal
+     0.03s  0.07%  4.01%      4.98s 11.68%  google.golang.org/protobuf/proto.MarshalOptions.Marshal
+         0     0%  4.01%      4.05s  9.50%  runtime.gcDrainMarkWorkerDedicated (inline)
+         0     0%  4.01%      3.57s  8.37%  github.com/twmb/franz-go/pkg/kgo.(*broker).handleReqs
+     0.02s 0.047%  4.06%      3.54s  8.30%  github.com/twmb/franz-go/pkg/kgo.(*broker).handleReq
+         0     0%  4.06%      3.44s  8.07%  github.com/ZofSpades/tradewatch/internal/events.Unmarshal (inline)
+     0.09s  0.21%  4.27%      3.44s  8.07%  google.golang.org/protobuf/proto.Unmarshal
+     0.45s  1.06%  5.32%      3.41s  8.00%  runtime.mallocgcSmallScanNoHeader
+         0     0%  5.32%      3.27s  7.67%  github.com/twmb/franz-go/pkg/kgo.(*brokerCxn).writeRequest
+     0.06s  0.14%  5.47%      3.27s  7.67%  google.golang.org/protobuf/proto.UnmarshalOptions.unmarshal
+     0.01s 0.023%  5.49%      3.04s  7.13%  runtime.schedule
+     0.21s  0.49%  5.98%      2.97s  6.97%  runtime.newobject
+     0.01s 0.023%  6.01%      2.94s  6.90%  google.golang.org/protobuf/internal/impl.(*MessageInfo).unmarshal
+     2.94s  6.90% 12.90%      2.94s  6.90%  runtime.futex
+     0.05s  0.12% 13.02%      2.93s  6.87%  google.golang.org/protobuf/internal/impl.(*MessageInfo).unmarshalPointer
+     0.91s  2.13% 15.15%      2.92s  6.85%  google.golang.org/protobuf/internal/impl.(*MessageInfo).unmarshalPointerEager
+     0.02s 0.047% 15.20%      2.86s  6.71%  runtime.mcall
+         0     0% 15.20%      2.62s  6.15%  runtime.park_m
+     0.01s 0.023% 15.22%      2.43s  5.70%  runtime.futexwakeup
+         0     0% 15.22%      2.30s  5.40%  runtime.notewakeup
+     2.26s  5.30% 20.53%      2.26s  5.30%  internal/runtime/syscall/linux.Syscall6
+     0.04s 0.094% 20.62%      2.24s  5.25%  google.golang.org/protobuf/internal/impl.(*MessageInfo).marshal
+         0     0% 20.62%      2.21s  5.18%  github.com/twmb/franz-go/pkg/kgo.(*source).loopFetch
+         0     0% 20.62%      2.21s  5.18%  github.com/twmb/franz-go/pkg/kmsg.(*RequestFormatter).AppendRequest
+     0.01s 0.023% 20.64%      2.20s  5.16%  github.com/twmb/franz-go/pkg/kgo.(*source).fetch
+     0.55s  1.29% 21.93%      2.20s  5.16%  google.golang.org/protobuf/internal/impl.(*MessageInfo).marshalAppendPointer
+     0.21s  0.49% 22.43%      2.15s  5.04%  github.com/ZofSpades/tradewatch/internal/ingest.normalize
+     0.02s 0.047% 22.47%      2.15s  5.04%  github.com/twmb/franz-go/pkg/kgo.(*produceRequest).AppendTo
+     0.01s 0.023% 22.50%      2.11s  4.95%  github.com/twmb/franz-go/pkg/kgo.seqRecBatch.appendTo
+     0.08s  0.19% 22.68%      2.11s  4.95%  runtime.findRunnable
+     1.23s  2.89% 25.57%      2.07s  4.86%  runtime.scanObject
+         0     0% 25.57%      2.04s  4.79%  internal/poll.ignoringEINTRIO (inline)
+         0     0% 25.57%      2.04s  4.79%  syscall.Syscall
+     0.01s 0.023% 25.59%      2.03s  4.76%  runtime.wakep
+     0.10s  0.23% 25.83%      2.02s  4.74%  runtime.scanSpan
+         0     0% 25.83%      1.98s  4.64%  syscall.RawSyscall6
+         0     0% 25.83%      1.97s  4.62%  runtime.startm
+     0.03s  0.07% 25.90%      1.81s  4.25%  google.golang.org/protobuf/internal/impl.(*MessageInfo).sizePointer
+     0.04s 0.094% 25.99%      1.80s  4.22%  github.com/twmb/franz-go/pkg/kgo.(*source).handleReqResp
+         0     0% 25.99%      1.78s  4.18%  google.golang.org/protobuf/internal/impl.(*MessageInfo).size
+     0.51s  1.20% 27.19%      1.78s  4.18%  google.golang.org/protobuf/internal/impl.(*MessageInfo).sizePointerSlow
+     0.84s  1.97% 29.16%      1.77s  4.15%  runtime.scanObjectsSmall
+     0.07s  0.16% 29.32%      1.73s  4.06%  google.golang.org/protobuf/internal/impl.appendMessageInfo
+     0.01s 0.023% 29.35%      1.67s  3.92%  github.com/twmb/franz-go/pkg/kgo.(*brokerCxn).handleResps
+     0.01s 0.023% 29.37%      1.66s  3.89%  github.com/twmb/franz-go/pkg/kgo.(*Client).Produce (inline)
+     0.09s  0.21% 29.58%      1.65s  3.87%  github.com/twmb/franz-go/pkg/kgo.(*Client).produce
+     0.03s  0.07% 29.65%      1.65s  3.87%  github.com/twmb/franz-go/pkg/kgo.(*cursorOffsetNext).processRespPartition
+     0.01s 0.023% 29.67%      1.62s  3.80%  github.com/twmb/franz-go/pkg/kgo.ProcessFetchPartition
+     0.01s 0.023% 29.70%      1.61s  3.78%  github.com/twmb/franz-go/pkg/kgo.(*brokerCxn).handleResp
+     0.01s 0.023% 29.72%      1.50s  3.52%  github.com/twmb/franz-go/pkg/kgo.(*ProcessFetchPartitionOpts).processRecordBatch
+     0.05s  0.12% 29.84%      1.46s  3.42%  runtime.growslice
+     0.08s  0.19% 30.03%      1.45s  3.40%  google.golang.org/protobuf/internal/impl.consumeMessageInfo
+     0.02s 0.047% 30.07%      1.42s  3.33%  runtime.(*mcache).nextFree
+     0.02s 0.047% 30.12%      1.38s  3.24%  runtime.(*mcache).refill
+         0     0% 30.12%      1.34s  3.14%  github.com/twmb/franz-go/pkg/kgo.(*brokerCxn).readResponse
+     0.02s 0.047% 30.17%      1.30s  3.05%  runtime.makeslice
+     0.01s 0.023% 30.19%      1.28s  3.00%  github.com/twmb/franz-go/pkg/kgo.(*brokerCxn).readConn
+     0.01s 0.023% 30.21%      1.28s  3.00%  google.golang.org/protobuf/internal/impl.(*MessageInfo).initOneofFieldCoders.func4
+     0.04s 0.094% 30.31%      1.28s  3.00%  google.golang.org/protobuf/internal/impl.sizeMessageInfo
+     0.19s  0.45% 30.75%      1.25s  2.93%  runtime.mapaccess2_fast64
+     0.04s 0.094% 30.85%      1.22s  2.86%  google.golang.org/protobuf/internal/impl.(*MessageInfo).initOneofFieldCoders.func3
+     0.01s 0.023% 30.87%      1.21s  2.84%  github.com/twmb/franz-go/pkg/kgo.(*Client).loadPartsAndPartition
+     0.01s 0.023% 30.89%      1.21s  2.84%  github.com/twmb/franz-go/pkg/kgo.(*brokerCxn).readSizeAndBody
+     1.17s  2.74% 33.64%      1.17s  2.74%  internal/runtime/maps.ctrlGroup.matchH2 (inline)
+     0.12s  0.28% 33.92%      1.13s  2.65%  github.com/twmb/franz-go/pkg/kgo.promisedRec.appendTo
+     0.50s  1.17% 35.09%      1.13s  2.65%  runtime.tryDeferToSpanScan
+     0.02s 0.047% 35.14%      1.11s  2.60%  io.ReadAtLeast
+         0     0% 35.14%      1.11s  2.60%  io.ReadFull (inline)
+     0.17s   0.4% 35.54%      1.11s  2.60%  runtime.(*mcentral).cacheSpan
+     0.01s 0.023% 35.56%      1.09s  2.56%  bufio.(*Reader).Read
+     1.08s  2.53% 38.10%      1.08s  2.53%  runtime.memclrNoHeapPointers
+     1.08s  2.53% 40.63%      1.08s  2.53%  runtime.memmove
+     0.13s   0.3% 40.93%      1.07s  2.51%  runtime.mallocgcSmallNoscan
+     0.01s 0.023% 40.96%      1.06s  2.49%  net.(*conn).Read
+         0     0% 40.96%      1.05s  2.46%  github.com/twmb/franz-go/pkg/kgo.(*brokerCxn).writeConn
+     0.01s 0.023% 40.98%      1.05s  2.46%  internal/poll.(*FD).Read
+         0     0% 40.98%      1.05s  2.46%  net.(*netFD).Read
+     0.30s   0.7% 41.68%      1.05s  2.46%  runtime.mapaccess2_faststr
+         0     0% 41.68%      1.03s  2.42%  syscall.Read (inline)
+         0     0% 41.68%      1.03s  2.42%  syscall.read
+         0     0% 41.68%      1.01s  2.37%  internal/poll.(*FD).Write
+         0     0% 41.68%      1.01s  2.37%  net.(*conn).Write
+         0     0% 41.68%      1.01s  2.37%  net.(*netFD).Write
+         0     0% 41.68%      1.01s  2.37%  syscall.Write (inline)
+         0     0% 41.68%      1.01s  2.37%  syscall.write
+         0     0% 41.68%      0.99s  2.32%  runtime.gcDrainMarkWorkerIdle (inline)
+     0.07s  0.16% 41.85%      0.97s  2.28%  github.com/prometheus/client_golang/prometheus.(*CounterVec).GetMetricWithLabelValues (inline)
+         0     0% 41.85%      0.97s  2.28%  github.com/prometheus/client_golang/prometheus.(*CounterVec).WithLabelValues
+     0.17s   0.4% 42.25%      0.96s  2.25%  github.com/twmb/franz-go/pkg/kgo.(*Client).doPartition
+     0.07s  0.16% 42.41%      0.91s  2.13%  github.com/ZofSpades/tradewatch/internal/kafka.EventMeta.Headers
+     0.04s 0.094% 42.51%      0.90s  2.11%  github.com/prometheus/client_golang/prometheus.(*MetricVec).GetMetricWithLabelValues
+         0     0% 42.51%      0.90s  2.11%  github.com/twmb/franz-go/pkg/kgo.(*compressor).Compress
+         0     0% 42.51%      0.89s  2.09%  runtime.bgsweep
+     0.02s 0.047% 42.55%      0.84s  1.97%  github.com/twmb/franz-go/pkg/kbin.AppendVarintBytes
+     0.01s 0.023% 42.58%      0.82s  1.92%  runtime.stopm
+     0.04s 0.094% 42.67%      0.81s  1.90%  google.golang.org/protobuf/internal/impl.consumeMessageSliceInfo
+     0.22s  0.52% 43.19%      0.81s  1.90%  runtime.sweepone
+         0     0% 43.19%      0.80s  1.88%  runtime.resetspinning
+     0.06s  0.14% 43.33%      0.76s  1.78%  github.com/twmb/franz-go/pkg/kgo.readRawRecordsDirect
+     0.01s 0.023% 43.35%      0.74s  1.74%  runtime.newstack
+     0.08s  0.19% 43.54%      0.72s  1.69%  runtime.(*sweepLocked).sweep
+     0.18s  0.42% 43.96%      0.71s  1.67%  github.com/ZofSpades/tradewatch/internal/kafka.ParseEventMeta
+     0.10s  0.23% 44.19%      0.71s  1.67%  github.com/twmb/franz-go/pkg/kgo.(*recBuf).bufferRecord
+     0.06s  0.14% 44.33%      0.71s  1.67%  runtime.markroot
+     0.71s  1.67% 46.00%      0.71s  1.67%  runtime.nextFreeFast (inline)
+         0     0% 46.00%      0.70s  1.64%  runtime.gcMarkDone
+     0.69s  1.62% 47.62%      0.69s  1.62%  aeshashbody
+     0.09s  0.21% 47.83%      0.68s  1.60%  runtime.heapSetTypeNoHeader (inline)
+     0.01s 0.023% 47.85%      0.67s  1.57%  github.com/klauspost/compress/s2.EncodeSnappy
+         0     0% 47.85%      0.65s  1.52%  github.com/klauspost/compress/s2.encodeBlockSnappy
+     0.10s  0.23% 48.09%      0.64s  1.50%  runtime.mapaccess2
+     0.08s  0.19% 48.28%      0.63s  1.48%  github.com/ZofSpades/tradewatch/internal/ingest.accountRef
+         0     0% 48.28%      0.63s  1.48%  runtime.goschedImpl
+     0.07s  0.16% 48.44%      0.63s  1.48%  runtime.mapaccess1
+     0.02s 0.047% 48.49%      0.63s  1.48%  time.Now
+     0.61s  1.43% 49.92%      0.61s  1.43%  time.runtimeNow
+     0.02s 0.047% 49.96%      0.60s  1.41%  google.golang.org/protobuf/internal/impl.(*MessageInfo).initOneofFieldCoders.func2
+         0     0% 49.96%      0.60s  1.41%  runtime.morestack
+     0.44s  1.03% 51.00%      0.59s  1.38%  runtime.(*mspan).writeHeapBitsSmall
+     0.06s  0.14% 51.14%      0.58s  1.36%  github.com/ZofSpades/tradewatch/internal/ingest.checkOrder
+         0     0% 51.14%      0.58s  1.36%  runtime.gopreempt_m (inline)
+     0.07s  0.16% 51.30%      0.57s  1.34%  google.golang.org/protobuf/internal/impl.appendStringNoZeroValidateUTF8
+         0     0% 51.30%      0.57s  1.34%  runtime.(*mcentral).grow
+         0     0% 51.30%      0.57s  1.34%  runtime.gcMarkTermination
+         0     0% 51.30%      0.56s  1.31%  runtime.goready (inline)
+         0     0% 51.30%      0.56s  1.31%  runtime.ready
+     0.05s  0.12% 51.42%      0.55s  1.29%  github.com/ZofSpades/tradewatch/internal/events.Wrap
+     0.03s  0.07% 51.49%      0.54s  1.27%  reflect.New
+     0.20s  0.47% 51.96%      0.53s  1.24%  github.com/prometheus/client_golang/prometheus.(*MetricVec).hashLabelValues
+     0.02s 0.047% 52.01%      0.53s  1.24%  github.com/twmb/franz-go/pkg/kgo.(*producer).finishPromises
+     0.11s  0.26% 52.26%      0.53s  1.24%  internal/runtime/maps.(*Map).getWithKeySmall
+     0.01s 0.023% 52.29%      0.53s  1.24%  runtime.futexsleep
+     0.01s 0.023% 52.31%      0.52s  1.22%  runtime.(*mheap).alloc
+     0.07s  0.16% 52.47%      0.52s  1.22%  runtime.slicebytetostring
+         0     0% 52.47%      0.51s  1.20%  github.com/twmb/franz-go/pkg/kgo.(*Client).PollRecords
+         0     0% 52.47%      0.51s  1.20%  runtime.(*mheap).alloc.func1
+     0.01s 0.023% 52.50%      0.50s  1.17%  runtime.(*mheap).allocSpan
+     0.03s  0.07% 52.57%      0.49s  1.15%  github.com/ZofSpades/tradewatch/internal/kafka.intern
+     0.02s 0.047% 52.62%      0.49s  1.15%  runtime.mPark (inline)
+     0.49s  1.15% 53.76%      0.49s  1.15%  runtime.spanClass.sizeclass (inline)
+         0     0% 53.76%      0.48s  1.13%  github.com/klauspost/compress/s2.Decode
+     0.06s  0.14% 53.91%      0.48s  1.13%  github.com/twmb/franz-go/pkg/kgo.(*Client).finishRecordPromise
+         0     0% 53.91%      0.48s  1.13%  github.com/twmb/franz-go/pkg/kgo.(*ProcessFetchPartitionOpts).decompress
+         0     0% 53.91%      0.48s  1.13%  github.com/twmb/franz-go/pkg/kgo.(*decompressor).Decompress
+         0     0% 53.91%      0.48s  1.13%  github.com/twmb/franz-go/pkg/kgo.decompressSnappy
+     0.48s  1.13% 55.03%      0.48s  1.13%  google.golang.org/protobuf/encoding/protowire.AppendVarint
+     0.04s 0.094% 55.13%      0.48s  1.13%  google.golang.org/protobuf/internal/impl.consumeStringValidateUTF8
+         0     0% 55.13%      0.48s  1.13%  runtime.(*mcentral).uncacheSpan
+     0.08s  0.19% 55.31%      0.48s  1.13%  runtime.mapassign
+     0.04s 0.094% 55.41%      0.47s  1.10%  runtime.notesleep
+     0.46s  1.08% 56.49%      0.46s  1.08%  github.com/ZofSpades/tradewatch/internal/tracing.Traced (inline)
+     0.02s 0.047% 56.53%      0.46s  1.08%  reflect.unsafe_New
+     0.01s 0.023% 56.56%      0.45s  1.06%  runtime.(*mcache).prepareForSweep
+     0.26s  0.61% 57.17%      0.43s  1.01%  runtime.(*spanSet).push
+         0     0% 57.17%      0.43s  1.01%  runtime.mallocgcLarge
+     0.04s 0.094% 57.26%      0.43s  1.01%  type:.hash.github.com/ZofSpades/tradewatch/internal/ingest.SeqKey
+     0.41s  0.96% 58.22%      0.41s  0.96%  github.com/twmb/franz-go/pkg/kgo.(*Record).userSize (inline)
+     0.17s   0.4% 58.62%      0.40s  0.94%  runtime.(*spanSet).pop
+     0.19s  0.45% 59.07%      0.39s  0.91%  type:.eq.github.com/ZofSpades/tradewatch/internal/ingest.SeqKey
+     0.38s  0.89% 59.96%      0.38s  0.89%  memeqbody
+     0.05s  0.12% 60.08%      0.38s  0.89%  runtime.netpoll
+     0.01s 0.023% 60.10%      0.37s  0.87%  github.com/twmb/franz-go/pkg/kgo.(*Client).PollRecords.func3
+     0.03s  0.07% 60.17%      0.37s  0.87%  runtime.chansend
+         0     0% 60.17%      0.37s  0.87%  runtime.newproc
+         0     0% 60.17%      0.37s  0.87%  runtime.newproc.func1
+     0.21s  0.49% 60.66%      0.36s  0.84%  github.com/ZofSpades/tradewatch/internal/events.HeaderOf
+     0.36s  0.84% 61.51%      0.36s  0.84%  github.com/klauspost/compress/s2.encodeSnappyBlockAsm
+     0.12s  0.28% 61.79%      0.36s  0.84%  google.golang.org/protobuf/internal/impl.appendInt64NoZero
+         0     0% 61.79%      0.36s  0.84%  runtime.markroot.func1
+         0     0% 61.79%      0.36s  0.84%  runtime.startTheWorldWithSema
+         0     0% 61.79%      0.35s  0.82%  go.opentelemetry.io/otel/sdk/trace.(*recordingSpan).End
+     0.03s  0.07% 61.86%      0.35s  0.82%  google.golang.org/protobuf/encoding/protowire.AppendString (inline)
+     0.10s  0.23% 62.09%      0.35s  0.82%  runtime.(*mcache).releaseAll
+     0.01s 0.023% 62.12%      0.35s  0.82%  runtime.gcStart
+         0     0% 62.12%      0.34s   0.8%  runtime.lock (inline)
+     0.12s  0.28% 62.40%      0.34s   0.8%  runtime.lock2
+         0     0% 62.40%      0.34s   0.8%  runtime.lockWithRank (inline)
+         0     0% 62.40%      0.33s  0.77%  runtime.send
+     0.08s  0.19% 62.59%      0.33s  0.77%  runtime.stealWork
+     0.01s 0.023% 62.61%      0.32s  0.75%  github.com/ZofSpades/tradewatch/internal/ingest.(*Sequencer).CheckGaps
+         0     0% 62.61%      0.32s  0.75%  github.com/ZofSpades/tradewatch/internal/ingest.(*Service).checkGaps
+     0.06s  0.14% 62.75%      0.32s  0.75%  github.com/twmb/franz-go/pkg/kgo.(*recBatch).tryBuffer
+     0.01s 0.023% 62.77%      0.32s  0.75%  github.com/twmb/franz-go/pkg/kgo.(*source).takeNBuffered

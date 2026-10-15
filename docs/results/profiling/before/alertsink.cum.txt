@@ -1,0 +1,209 @@
+File: alertsink
+Build ID: e07fc6f4fc454ce52760ac52f7da4ca14041f538
+Type: cpu
+Time: 2026-10-14 16:35:57 UTC
+Duration: 30s, Total samples = 4.64s (15.47%)
+Showing nodes accounting for 3.12s, 67.24% of 4.64s total
+Dropped 395 nodes (cum <= 0.02s)
+Showing top 200 nodes out of 266
+      flat  flat%   sum%        cum   cum%
+         0     0%     0%      2.12s 45.69%  github.com/ZofSpades/tradewatch/internal/alertsink.(*Service).Run
+         0     0%     0%      2.12s 45.69%  golang.org/x/sync/errgroup.(*Group).Go.func1
+         0     0%     0%      2.12s 45.69%  main.run.func2
+         0     0%     0%      2.03s 43.75%  github.com/ZofSpades/tradewatch/internal/alertsink.(*Service).process
+     1.34s 28.88% 28.88%      1.34s 28.88%  internal/runtime/syscall/linux.Syscall6
+         0     0% 28.88%      1.29s 27.80%  internal/poll.ignoringEINTRIO (inline)
+         0     0% 28.88%      1.28s 27.59%  syscall.Syscall
+     0.01s  0.22% 29.09%      1.22s 26.29%  github.com/ZofSpades/tradewatch/internal/alertsink.(*Service).storeAlerts
+         0     0% 29.09%      1.21s 26.08%  github.com/ZofSpades/tradewatch/internal/alertsink.(*Service).storeAlerts.func1
+         0     0% 29.09%      1.21s 26.08%  github.com/ZofSpades/tradewatch/internal/alertsink.(*Service).withRetry
+         0     0% 29.09%      1.21s 26.08%  github.com/ZofSpades/tradewatch/internal/store.(*Store).UpsertAlerts
+         0     0% 29.09%      1.13s 24.35%  syscall.RawSyscall6
+     0.01s  0.22% 29.31%      0.93s 20.04%  net.(*conn).Write
+     0.01s  0.22% 29.53%      0.92s 19.83%  internal/poll.(*FD).Write
+         0     0% 29.53%      0.92s 19.83%  net.(*netFD).Write
+         0     0% 29.53%      0.91s 19.61%  syscall.Write (inline)
+         0     0% 29.53%      0.91s 19.61%  syscall.write
+     0.01s  0.22% 29.74%      0.84s 18.10%  runtime.schedule
+         0     0% 29.74%      0.83s 17.89%  runtime.mcall
+     0.78s 16.81% 46.55%      0.78s 16.81%  runtime.futex
+         0     0% 46.55%      0.75s 16.16%  runtime.park_m
+         0     0% 46.55%      0.70s 15.09%  github.com/twmb/franz-go/pkg/kgo.(*broker).handleReqs
+         0     0% 46.55%      0.69s 14.87%  runtime.futexwakeup
+     0.01s  0.22% 46.77%      0.68s 14.66%  runtime.findRunnable
+         0     0% 46.77%      0.67s 14.44%  runtime.notewakeup
+         0     0% 46.77%      0.66s 14.22%  github.com/twmb/franz-go/pkg/kgo.(*broker).handleReq
+         0     0% 46.77%      0.64s 13.79%  runtime.systemstack
+         0     0% 46.77%      0.57s 12.28%  github.com/jackc/pgx/v5/pgconn.(*PgConn).flushWithPotentialWriteReadDeadlock
+         0     0% 46.77%      0.52s 11.21%  runtime.startm
+         0     0% 46.77%      0.52s 11.21%  runtime.wakep
+         0     0% 46.77%      0.49s 10.56%  github.com/ZofSpades/tradewatch/internal/live.(*Views).Raised
+         0     0% 46.77%      0.49s 10.56%  github.com/redis/go-redis/v9.(*Client).TxPipelined
+         0     0% 46.77%      0.49s 10.56%  github.com/redis/go-redis/v9.(*Pipeline).Pipelined
+         0     0% 46.77%      0.49s 10.56%  github.com/twmb/franz-go/pkg/kgo.(*brokerCxn).writeRequest
+         0     0% 46.77%      0.44s  9.48%  net.(*conn).Read
+     0.01s  0.22% 46.98%      0.44s  9.48%  net.(*netFD).Read
+     0.01s  0.22% 47.20%      0.43s  9.27%  io.ReadAtLeast
+         0     0% 47.20%      0.42s  9.05%  github.com/twmb/franz-go/pkg/kgo.(*brokerCxn).handleResps
+         0     0% 47.20%      0.42s  9.05%  github.com/twmb/franz-go/pkg/kgo.(*brokerCxn).writeConn
+         0     0% 47.20%      0.42s  9.05%  internal/poll.(*FD).Read
+     0.01s  0.22% 47.41%      0.40s  8.62%  github.com/jackc/pgx/v5.(*Conn).SendBatch
+         0     0% 47.41%      0.40s  8.62%  github.com/jackc/pgx/v5.(*dbTx).SendBatch
+         0     0% 47.41%      0.40s  8.62%  github.com/jackc/pgx/v5/pgproto3.(*Frontend).Flush
+         0     0% 47.41%      0.40s  8.62%  github.com/jackc/pgx/v5/pgxpool.(*Tx).SendBatch
+         0     0% 47.41%      0.39s  8.41%  github.com/jackc/pgx/v5.(*Conn).sendBatchQueryExecModeCacheStatement
+         0     0% 47.41%      0.39s  8.41%  github.com/twmb/franz-go/pkg/kgo.(*brokerCxn).handleResp
+         0     0% 47.41%      0.38s  8.19%  github.com/jackc/pgx/v5.(*Conn).sendBatchExtendedWithDescription
+     0.01s  0.22% 47.63%      0.38s  8.19%  syscall.Read (inline)
+     0.01s  0.22% 47.84%      0.37s  7.97%  github.com/jackc/pgx/v5.(*Conn).Exec
+         0     0% 47.84%      0.37s  7.97%  github.com/redis/go-redis/v9.(*Client).TxPipelined.(*Client).TxPipeline.func1
+         0     0% 47.84%      0.37s  7.97%  github.com/redis/go-redis/v9.(*Pipeline).Exec
+         0     0% 47.84%      0.37s  7.97%  syscall.read
+         0     0% 47.84%      0.36s  7.76%  github.com/jackc/pgx/v5.(*Conn).exec
+         0     0% 47.84%      0.36s  7.76%  github.com/redis/go-redis/v9.(*baseClient).generalProcessPipeline
+         0     0% 47.84%      0.36s  7.76%  github.com/redis/go-redis/v9.(*baseClient).processTxPipeline
+         0     0% 47.84%      0.36s  7.76%  github.com/redis/go-redis/v9.(*baseClient).withConn
+         0     0% 47.84%      0.36s  7.76%  github.com/redis/go-redis/v9.(*baseClient).withPipelineConn
+         0     0% 47.84%      0.36s  7.76%  github.com/redis/go-redis/v9.(*hooksMixin).processTxPipelineHook
+         0     0% 47.84%      0.35s  7.54%  github.com/jackc/pgx/v5.(*Conn).execSimpleProtocol
+         0     0% 47.84%      0.35s  7.54%  github.com/jackc/pgx/v5/pgconn.(*Pipeline).Flush
+         0     0% 47.84%      0.35s  7.54%  github.com/jackc/pgx/v5/pgconn.(*Pipeline).Sync
+     0.01s  0.22% 48.06%      0.31s  6.68%  github.com/twmb/franz-go/pkg/kgo.(*brokerCxn).readResponse
+         0     0% 48.06%      0.30s  6.47%  github.com/redis/go-redis/v9.(*baseClient).generalProcessPipeline.func1
+         0     0% 48.06%      0.30s  6.47%  github.com/redis/go-redis/v9.(*baseClient).txPipelineProcessCmds
+         0     0% 48.06%      0.28s  6.03%  github.com/twmb/franz-go/pkg/kgo.(*brokerCxn).readConn
+         0     0% 48.06%      0.28s  6.03%  runtime.mallocgc
+     0.01s  0.22% 48.28%      0.25s  5.39%  github.com/jackc/pgx/v5/pgconn.(*PgConn).peekMessage
+         0     0% 48.28%      0.25s  5.39%  github.com/jackc/pgx/v5/pgxpool.(*Pool).Begin (inline)
+         0     0% 48.28%      0.25s  5.39%  github.com/jackc/pgx/v5/pgxpool.(*Pool).BeginTx
+     0.02s  0.43% 48.71%      0.25s  5.39%  runtime.netpoll
+         0     0% 48.71%      0.24s  5.17%  github.com/jackc/pgx/v5.(*Conn).BeginTx
+         0     0% 48.71%      0.24s  5.17%  github.com/jackc/pgx/v5/pgconn.(*PgConn).Exec
+     0.01s  0.22% 48.92%      0.24s  5.17%  github.com/jackc/pgx/v5/pgproto3.(*Frontend).Receive
+         0     0% 48.92%      0.24s  5.17%  github.com/jackc/pgx/v5/pgxpool.(*Conn).BeginTx
+         0     0% 48.92%      0.23s  4.96%  github.com/twmb/franz-go/pkg/kgo.(*brokerCxn).readSizeAndBody
+         0     0% 48.92%      0.23s  4.96%  runtime.(*timer).modify
+         0     0% 48.92%      0.23s  4.96%  runtime.gcBgMarkWorker
+     0.01s  0.22% 49.14%      0.22s  4.74%  github.com/jackc/pgx/v5/pgproto3.(*chunkReader).Next
+     0.01s  0.22% 49.35%      0.22s  4.74%  internal/runtime/syscall/linux.EpollWait
+         0     0% 49.35%      0.22s  4.74%  io.ReadFull (inline)
+         0     0% 49.35%      0.21s  4.53%  bufio.(*Reader).Read
+     0.02s  0.43% 49.78%      0.21s  4.53%  github.com/jackc/pgx/v5/pgconn/internal/bgreader.(*BGReader).Read
+     0.04s  0.86% 50.65%      0.21s  4.53%  runtime.mallocgcSmallScanNoHeader
+     0.01s  0.22% 50.86%      0.21s  4.53%  runtime.wakeNetPoller
+         0     0% 50.86%      0.20s  4.31%  github.com/redis/go-redis/v9/internal/pool.(*Conn).WithWriter
+         0     0% 50.86%      0.18s  3.88%  bufio.(*Writer).Flush
+         0     0% 50.86%      0.18s  3.88%  runtime.entersyscall
+         0     0% 50.86%      0.17s  3.66%  github.com/jackc/pgx/v5/pgconn.(*PgConn).enterPotentialWriteReadDeadlock (inline)
+         0     0% 50.86%      0.17s  3.66%  github.com/jackc/pgx/v5/pgconn.(*PgConn).receiveMessage
+         0     0% 50.86%      0.17s  3.66%  github.com/jackc/pgx/v5/pgconn.(*Pipeline).getResults
+         0     0% 50.86%      0.17s  3.66%  github.com/jackc/pgx/v5/pgconn.(*Pipeline).receiveMessage
+         0     0% 50.86%      0.17s  3.66%  runtime.(*timer).maybeAdd
+         0     0% 50.86%      0.17s  3.66%  runtime.(*timer).reset (inline)
+         0     0% 50.86%      0.17s  3.66%  runtime.gcBgMarkWorker.func2
+         0     0% 50.86%      0.17s  3.66%  runtime.gcDrain
+     0.02s  0.43% 51.29%      0.17s  3.66%  runtime.reentersyscall
+         0     0% 51.29%      0.17s  3.66%  time.(*Timer).Reset
+         0     0% 51.29%      0.17s  3.66%  time.resetTimer
+         0     0% 51.29%      0.16s  3.45%  github.com/jackc/pgx/v5/pgconn.(*Pipeline).GetResults
+         0     0% 51.29%      0.16s  3.45%  github.com/jackc/pgx/v5/pgconn.(*Pipeline).getResultsQueryStatement
+         0     0% 51.29%      0.16s  3.45%  github.com/jackc/pgx/v5/pgconn.(*Pipeline).receiveBindComplete
+         0     0% 51.29%      0.15s  3.23%  github.com/jackc/pgx/v5/pgxpool.(*Tx).Commit
+         0     0% 51.29%      0.15s  3.23%  runtime.entersyscallWakeSysmon
+         0     0% 51.29%      0.15s  3.23%  runtime.gcDrainMarkWorkerDedicated (inline)
+     0.03s  0.65% 51.94%      0.15s  3.23%  runtime.newobject
+         0     0% 51.94%      0.14s  3.02%  github.com/ZofSpades/tradewatch/internal/events.Unmarshal (inline)
+     0.01s  0.22% 52.16%      0.14s  3.02%  github.com/twmb/franz-go/pkg/kgo.(*brokerCxn).waitResp
+         0     0% 52.16%      0.14s  3.02%  google.golang.org/protobuf/proto.Unmarshal
+         0     0% 52.16%      0.14s  3.02%  google.golang.org/protobuf/proto.UnmarshalOptions.unmarshal
+         0     0% 52.16%      0.13s  2.80%  github.com/jackc/pgx/v5.(*dbTx).Commit
+         0     0% 52.16%      0.13s  2.80%  github.com/jackc/pgx/v5.(*pipelineBatchResults).Close
+         0     0% 52.16%      0.13s  2.80%  google.golang.org/protobuf/internal/impl.(*MessageInfo).unmarshal
+         0     0% 52.16%      0.13s  2.80%  google.golang.org/protobuf/internal/impl.(*MessageInfo).unmarshalPointer
+     0.02s  0.43% 52.59%      0.13s  2.80%  google.golang.org/protobuf/internal/impl.(*MessageInfo).unmarshalPointerEager
+         0     0% 52.59%      0.13s  2.80%  google.golang.org/protobuf/internal/impl.consumeMessageInfo
+         0     0% 52.59%      0.13s  2.80%  runtime.newproc
+         0     0% 52.59%      0.13s  2.80%  runtime.newproc.func1
+         0     0% 52.59%      0.12s  2.59%  github.com/ZofSpades/tradewatch/internal/live.(*Views).Raised.func1
+         0     0% 52.59%      0.12s  2.59%  runtime.resetspinning
+         0     0% 52.59%      0.12s  2.59%  runtime.stopm
+         0     0% 52.59%      0.11s  2.37%  github.com/jackc/pgx/v5/pgconn.(*MultiResultReader).NextResult
+         0     0% 52.59%      0.11s  2.37%  runtime.netpollBreak
+         0     0% 52.59%      0.11s  2.37%  runtime.write
+     0.11s  2.37% 54.96%      0.11s  2.37%  runtime.write1
+         0     0% 54.96%      0.10s  2.16%  github.com/jackc/pgx/v5.(*pipelineBatchResults).Exec
+         0     0% 54.96%      0.10s  2.16%  github.com/redis/go-redis/v9/internal/pool.(*Conn).WithReader
+     0.01s  0.22% 55.17%      0.10s  2.16%  google.golang.org/protobuf/internal/impl.consumeMessageSliceInfo
+     0.01s  0.22% 55.39%      0.10s  2.16%  runtime.futexsleep
+         0     0% 55.39%      0.10s  2.16%  runtime.mPark (inline)
+         0     0% 55.39%      0.10s  2.16%  runtime.markroot
+     0.01s  0.22% 55.60%      0.10s  2.16%  runtime.notesleep
+         0     0% 55.60%      0.09s  1.94%  encoding/json.Marshal
+         0     0% 55.60%      0.09s  1.94%  github.com/ZofSpades/tradewatch/internal/store.scanAlert
+         0     0% 55.60%      0.09s  1.94%  github.com/jackc/pgx/v5.(*baseRows).Scan
+         0     0% 55.60%      0.09s  1.94%  github.com/jackc/pgx/v5.(*connRow).Scan
+         0     0% 55.60%      0.09s  1.94%  github.com/twmb/franz-go/pkg/kgo.(*source).loopFetch
+     0.02s  0.43% 56.03%      0.09s  1.94%  google.golang.org/protobuf/proto.MarshalOptions.marshal
+     0.01s  0.22% 56.25%      0.09s  1.94%  internal/poll.runtime_pollSetDeadline
+         0     0% 56.25%      0.09s  1.94%  internal/poll.setDeadlineImpl
+     0.02s  0.43% 56.68%      0.09s  1.94%  runtime.growslice
+         0     0% 56.68%      0.09s  1.94%  runtime.markroot.func1
+         0     0% 56.68%      0.09s  1.94%  runtime.newstack
+         0     0% 56.68%      0.09s  1.94%  runtime.scanstack
+         0     0% 56.68%      0.08s  1.72%  encoding/json.(*encodeState).marshal
+     0.01s  0.22% 56.90%      0.08s  1.72%  encoding/json.(*encodeState).reflectValue
+         0     0% 56.90%      0.08s  1.72%  github.com/ZofSpades/tradewatch/internal/events.Marshal (inline)
+         0     0% 56.90%      0.08s  1.72%  github.com/twmb/franz-go/pkg/kgo.(*groupConsumer).commit.func1
+         0     0% 56.90%      0.08s  1.72%  github.com/twmb/franz-go/pkg/kgo.(*source).fetch
+         0     0% 56.90%      0.08s  1.72%  google.golang.org/protobuf/proto.MarshalOptions.Marshal
+         0     0% 56.90%      0.08s  1.72%  runtime.goexit0
+         0     0% 56.90%      0.08s  1.72%  runtime.goready (inline)
+         0     0% 56.90%      0.08s  1.72%  runtime.ready
+     0.02s  0.43% 57.33%      0.07s  1.51%  encoding/json.structEncoder.encode
+     0.01s  0.22% 57.54%      0.07s  1.51%  github.com/jackc/pgx/v5.(*pipelineBatchResults).QueryRow
+         0     0% 57.54%      0.07s  1.51%  github.com/redis/go-redis/v9.(*baseClient).txPipelineProcessCmds.func2
+     0.07s  1.51% 59.05%      0.07s  1.51%  runtime.(*mspan).writeHeapBitsSmall
+         0     0% 59.05%      0.07s  1.51%  runtime.heapSetTypeNoHeader (inline)
+     0.02s  0.43% 59.48%      0.07s  1.51%  runtime.makeslice
+     0.05s  1.08% 60.56%      0.07s  1.51%  runtime.stealWork
+     0.02s  0.43% 60.99%      0.06s  1.29%  context.AfterFunc.func1
+         0     0% 60.99%      0.06s  1.29%  github.com/ZofSpades/tradewatch/internal/alertsink.(*Service).process.func1
+     0.01s  0.22% 61.21%      0.06s  1.29%  github.com/ZofSpades/tradewatch/internal/alertsink.endSpans
+         0     0% 61.21%      0.06s  1.29%  github.com/jackc/pgx/v5.(*pipelineBatchResults).Query
+         0     0% 61.21%      0.06s  1.29%  github.com/redis/go-redis/v9.(*baseClient)._getConn
+         0     0% 61.21%      0.06s  1.29%  github.com/redis/go-redis/v9.(*baseClient).getConn
+         0     0% 61.21%      0.06s  1.29%  github.com/redis/go-redis/v9.(*baseClient).txPipelineReadQueued
+         0     0% 61.21%      0.06s  1.29%  github.com/redis/go-redis/v9/internal/pool.(*ConnPool).Get
+         0     0% 61.21%      0.06s  1.29%  github.com/redis/go-redis/v9/internal/pool.(*ConnPool).getConn
+     0.01s  0.22% 61.42%      0.06s  1.29%  github.com/twmb/franz-go/pkg/kgo.(*Client).CommitRecords
+     0.02s  0.43% 61.85%      0.06s  1.29%  github.com/twmb/franz-go/pkg/kgo.growStack
+     0.02s  0.43% 62.28%      0.06s  1.29%  runtime.(*stkframe).getStackMap
+         0     0% 62.28%      0.06s  1.29%  runtime.(*unwinder).next
+     0.01s  0.22% 62.50%      0.06s  1.29%  runtime.closechan
+     0.01s  0.22% 62.72%      0.06s  1.29%  runtime.copystack
+         0     0% 62.72%      0.06s  1.29%  runtime.gcMarkDone
+     0.06s  1.29% 64.01%      0.06s  1.29%  runtime.nextFreeFast (inline)
+     0.01s  0.22% 64.22%      0.05s  1.08%  github.com/jackc/pgx/v5/pgconn/ctxwatch.(*ContextWatcher).Unwatch
+         0     0% 64.22%      0.05s  1.08%  github.com/jackc/pgx/v5/pgtype.(*Map).PlanScan (inline)
+     0.01s  0.22% 64.44%      0.05s  1.08%  github.com/jackc/pgx/v5/pgtype.(*Map).planScan
+         0     0% 64.44%      0.05s  1.08%  github.com/twmb/franz-go/pkg/kgo.(*Client).CommitOffsetsSync
+     0.01s  0.22% 64.66%      0.05s  1.08%  github.com/twmb/franz-go/pkg/kgo.(*Client).Request
+     0.01s  0.22% 64.87%      0.05s  1.08%  github.com/twmb/franz-go/pkg/kgo.(*groupConsumer).commitOffsetsSync
+         0     0% 64.87%      0.05s  1.08%  github.com/twmb/franz-go/pkg/kmsg.(*OffsetCommitRequest).RequestWith (inline)
+         0     0% 64.87%      0.05s  1.08%  go.opentelemetry.io/otel/sdk/trace.(*recordingSpan).End
+     0.01s  0.22% 65.09%      0.05s  1.08%  net.(*conn).SetWriteDeadline
+         0     0% 65.09%      0.05s  1.08%  runtime.bgsweep
+         0     0% 65.09%      0.05s  1.08%  runtime.closechan.goready.func1
+     0.05s  1.08% 66.16%      0.05s  1.08%  runtime.memmove
+     0.01s  0.22% 66.38%      0.05s  1.08%  runtime.scanframeworker
+         0     0% 66.38%      0.05s  1.08%  runtime.sweepone
+         0     0% 66.38%      0.05s  1.08%  runtime.unlock (inline)
+     0.03s  0.65% 67.03%      0.05s  1.08%  runtime.unlock2
+         0     0% 67.03%      0.05s  1.08%  runtime.unlockWithRank (inline)
+         0     0% 67.03%      0.04s  0.86%  bufio.(*Reader).Peek
+         0     0% 67.03%      0.04s  0.86%  bufio.(*Reader).fill
+         0     0% 67.03%      0.04s  0.86%  context.(*afterFuncCtx).cancel
+     0.01s  0.22% 67.24%      0.04s  0.86%  context.(*cancelCtx).cancel
+         0     0% 67.24%      0.04s  0.86%  github.com/redis/go-redis/v9.(*baseClient).processPendingPushNotificationWithReader
+         0     0% 67.24%      0.04s  0.86%  github.com/redis/go-redis/v9/internal/pool.(*ConnPool).isHealthyConn
+         0     0% 67.24%      0.04s  0.86%  github.com/redis/go-redis/v9/internal/pool.connCheck

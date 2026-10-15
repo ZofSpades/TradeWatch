@@ -1,0 +1,49 @@
+File: ingest
+Build ID: e81f60f01b497305ec53cb8e3ffef656ffd19898
+Type: cpu
+Time: 2026-10-14 16:35:57 UTC
+Duration: 30s, Total samples = 45.77s (152.56%)
+Showing nodes accounting for 25.34s, 55.36% of 45.77s total
+Dropped 798 nodes (cum <= 0.23s)
+Showing top 40 nodes out of 262
+      flat  flat%   sum%        cum   cum%
+     2.88s  6.29%  6.29%      2.88s  6.29%  runtime.futex
+     2.43s  5.31% 11.60%      2.43s  5.31%  internal/runtime/syscall/linux.Syscall6
+     1.70s  3.71% 15.32%      1.70s  3.71%  runtime.memmove
+     1.41s  3.08% 18.40%      1.41s  3.08%  internal/runtime/maps.ctrlGroup.matchH2 (inline)
+     1.37s  2.99% 21.39%      1.37s  2.99%  runtime.memclrNoHeapPointers
+     1.30s  2.84% 24.23%      2.14s  4.68%  runtime.scanObject
+     0.86s  1.88% 26.11%      1.72s  3.76%  runtime.scanObjectsSmall
+     0.74s  1.62% 27.73%      0.74s  1.62%  runtime.nextFreeFast (inline)
+     0.73s  1.59% 29.32%      0.73s  1.59%  time.runtimeNow
+     0.70s  1.53% 30.85%      2.74s  5.99%  google.golang.org/protobuf/internal/impl.(*MessageInfo).unmarshalPointerEager
+     0.66s  1.44% 32.29%      3.82s  8.35%  runtime.mallocgcSmallScanNoHeader
+     0.60s  1.31% 33.60%      2.41s  5.27%  google.golang.org/protobuf/internal/impl.(*MessageInfo).marshalAppendPointer
+     0.54s  1.18% 34.78%      0.54s  1.18%  runtime.spanClass.sizeclass (inline)
+     0.53s  1.16% 35.94%      0.54s  1.18%  github.com/twmb/franz-go/pkg/kgo.(*Record).userSize
+     0.53s  1.16% 37.10%      1.71s  3.74%  google.golang.org/protobuf/internal/impl.(*MessageInfo).sizePointerSlow
+     0.49s  1.07% 38.17%      0.50s  1.09%  github.com/ZofSpades/tradewatch/internal/tracing.Traced (inline)
+     0.44s  0.96% 39.13%      0.44s  0.96%  aeshashbody
+     0.44s  0.96% 40.09%      7.04s 15.38%  runtime.mallocgc
+     0.44s  0.96% 41.05%      1.21s  2.64%  runtime.tryDeferToSpanScan
+     0.42s  0.92% 41.97%     14.08s 30.76%  github.com/ZofSpades/tradewatch/internal/ingest.(*Sequencer).release
+     0.41s   0.9% 42.87%      0.41s   0.9%  runtime.tgkill
+     0.41s   0.9% 43.76%      0.41s   0.9%  unicode/utf8.ValidString
+     0.38s  0.83% 44.59%      0.38s  0.83%  github.com/klauspost/compress/s2.encodeSnappyBlockAsm
+     0.38s  0.83% 45.42%      0.38s  0.83%  runtime.(*mspan).moveInlineMarks
+     0.38s  0.83% 46.25%      0.53s  1.16%  runtime.(*mspan).writeHeapBitsSmall
+     0.36s  0.79% 47.04%      0.36s  0.79%  google.golang.org/protobuf/encoding/protowire.AppendVarint
+     0.35s  0.76% 47.80%      0.43s  0.94%  runtime.(*spanSet).push
+     0.32s   0.7% 48.50%      0.43s  0.94%  github.com/ZofSpades/tradewatch/internal/events.HeaderOf
+     0.32s   0.7% 49.20%     24.43s 53.38%  github.com/ZofSpades/tradewatch/internal/ingest.(*Service).handleRecord
+     0.32s   0.7% 49.90%      0.32s   0.7%  memeqbody
+     0.28s  0.61% 50.51%      2.51s  5.48%  runtime.newobject
+     0.27s  0.59% 51.10%      2.15s  4.70%  github.com/ZofSpades/tradewatch/internal/ingest.normalize
+     0.26s  0.57% 51.67%      0.43s  0.94%  runtime.(*spanSet).pop
+     0.26s  0.57% 52.24%      2.75s  6.01%  runtime.growslice
+     0.26s  0.57% 52.81%      0.26s  0.57%  runtime.madvise
+     0.26s  0.57% 53.38%      0.55s  1.20%  runtime.stealWork
+     0.25s  0.55% 53.92%         1s  2.18%  runtime.sweepone
+     0.24s  0.52% 54.45%      0.32s   0.7%  runtime.findObject
+     0.22s  0.48% 54.93%      1.38s  3.02%  runtime.mallocgcSmallNoscan
+     0.20s  0.44% 55.36%      1.37s  2.99%  github.com/twmb/franz-go/pkg/kgo.promisedRec.appendTo

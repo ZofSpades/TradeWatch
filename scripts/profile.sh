@@ -55,6 +55,7 @@ after=$(published)
 } >"$out/README.txt"
 for f in "$out"/*.pb.gz; do
 	go tool pprof -top -nodecount=40 "$f" >"${f%.pb.gz}.top.txt" 2>/dev/null
+	go tool pprof -top -cum -nodecount=200 "$f" >"${f%.pb.gz}.cum.txt" 2>/dev/null
 done
 cat "$out/README.txt"
 echo "profiles written to $out"

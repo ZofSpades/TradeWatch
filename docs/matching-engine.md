@@ -80,5 +80,9 @@ Machine: AMD Ryzen 7 4800H laptop, Docker Desktop VM on WSL2, Go 1.26.9.
 | Market order sweeping 25 orders over 5 levels (plus rebuilding them) | 5.41 µs ± 0% | 30 per op |
 | Simulator-like mix: 55% limit, 5% market, 22% cancel, 15% replace, 3% snapshot | 290.4 ns/op ± 13%, i.e. 3.44 M ops/s or 4.07 M events/s | 0 per op (53 B/op on average) |
 
-Each resting order and each new price level is one heap allocation. Phase 10
-profiles the full pipeline to decide which hotspot is worth fixing first.
+Each resting order and each new price level is one heap allocation.
+Profiling the whole pipeline under load ([performance.md](performance.md))
+found the matching engine far from the costliest part. At 80,000 events/s
+no order-book function took more than 2.3% of marketsim's CPU, against 35%
+for publishing ([results/profiling](results/profiling/README.md)). The
+hotspot fixed first was in the routing headers every record carries.

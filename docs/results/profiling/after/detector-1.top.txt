@@ -1,0 +1,49 @@
+File: detector
+Build ID: bb880d96fb417cdfde4cbec53a0448d7e786dfe4
+Type: cpu
+Time: 2026-10-14 16:47:31 UTC
+Duration: 30s, Total samples = 17.72s (59.06%)
+Showing nodes accounting for 11.12s, 62.75% of 17.72s total
+Dropped 626 nodes (cum <= 0.09s)
+Showing top 40 nodes out of 202
+      flat  flat%   sum%        cum   cum%
+     2.10s 11.85% 11.85%      2.10s 11.85%  runtime.memmove
+     1.17s  6.60% 18.45%      1.17s  6.60%  runtime.futex
+     0.63s  3.56% 22.01%      0.63s  3.56%  runtime.spanClass.sizeclass (inline)
+     0.60s  3.39% 25.40%      0.60s  3.39%  internal/runtime/syscall/linux.Syscall6
+     0.59s  3.33% 28.72%      3.13s 17.66%  google.golang.org/protobuf/internal/impl.(*MessageInfo).unmarshalPointerEager
+     0.55s  3.10% 31.83%      1.36s  7.67%  runtime.scanObjectsSmall
+     0.40s  2.26% 34.09%      0.40s  2.26%  runtime.memclrNoHeapPointers
+     0.29s  1.64% 35.72%      2.52s 14.22%  github.com/ZofSpades/tradewatch/internal/detect.(*stuffDetector).OnEvent
+     0.29s  1.64% 37.36%      0.34s  1.92%  slices.partitionOrdered[go.shape.int64]
+     0.25s  1.41% 38.77%      0.30s  1.69%  runtime.(*mspan).writeHeapBitsSmall
+     0.25s  1.41% 40.18%      0.98s  5.53%  runtime.tryDeferToSpanScan
+     0.21s  1.19% 41.37%      0.22s  1.24%  github.com/ZofSpades/tradewatch/internal/detect.(*stuffDetector).baselineRate
+     0.21s  1.19% 42.55%      0.21s  1.19%  runtime.nextFreeFast (inline)
+     0.20s  1.13% 43.68%     11.05s 62.36%  github.com/ZofSpades/tradewatch/internal/detector.(*Service).process
+     0.19s  1.07% 44.75%      0.19s  1.07%  internal/runtime/maps.ctrlGroup.matchH2 (inline)
+     0.19s  1.07% 45.82%      0.19s  1.07%  memeqbody
+     0.17s  0.96% 46.78%      0.64s  3.61%  github.com/ZofSpades/tradewatch/internal/detect.(*spoofDetector).OnEvent
+     0.17s  0.96% 47.74%      0.17s  0.96%  github.com/ZofSpades/tradewatch/internal/tracing.Traced (inline)
+     0.17s  0.96% 48.70%      0.54s  3.05%  runtime.scanObject
+     0.17s  0.96% 49.66%      0.17s  0.96%  slices.insertionSortOrdered[go.shape.int64]
+     0.16s   0.9% 50.56%      0.16s   0.9%  runtime.(*mspan).moveInlineMarks
+     0.15s  0.85% 51.41%      0.18s  1.02%  runtime.(*spanSet).push
+     0.15s  0.85% 52.26%      2.48s 14.00%  runtime.mallocgc
+     0.15s  0.85% 53.10%      0.15s  0.85%  unicode/utf8.Valid
+     0.13s  0.73% 53.84%      6.56s 37.02%  github.com/ZofSpades/tradewatch/internal/detect.(*Engine).Process
+     0.13s  0.73% 54.57%      0.13s  0.73%  runtime.extractHeapBitsSmall
+     0.12s  0.68% 55.25%      2.50s 14.11%  google.golang.org/protobuf/internal/impl.consumeMessageInfo
+     0.12s  0.68% 55.93%      0.12s  0.68%  internal/runtime/maps.ctrlGroup.matchFull (inline)
+     0.12s  0.68% 56.60%      1.46s  8.24%  runtime.mallocgcSmallScanNoHeader
+     0.11s  0.62% 57.22%      0.11s  0.62%  internal/runtime/atomic.(*UnsafePointer).Load (inline)
+     0.11s  0.62% 57.84%      1.63s  9.20%  runtime.scanSpan
+     0.11s  0.62% 58.47%      0.71s  4.01%  slices.pdqsortOrdered[go.shape.int64]
+     0.10s  0.56% 59.03%      0.10s  0.56%  aeshashbody
+     0.10s  0.56% 59.59%      0.10s  0.56%  github.com/klauspost/compress/s2.s2Decode
+     0.10s  0.56% 60.16%      0.30s  1.69%  github.com/twmb/franz-go/pkg/kgo.readRawRecordsDirect
+     0.10s  0.56% 60.72%      0.32s  1.81%  runtime.sweepone
+     0.09s  0.51% 61.23%      0.09s  0.51%  github.com/ZofSpades/tradewatch/internal/detect.trimTimed (inline)
+     0.09s  0.51% 61.74%      0.11s  0.62%  google.golang.org/protobuf/encoding/protowire.ConsumeBytes
+     0.09s  0.51% 62.25%      0.09s  0.51%  google.golang.org/protobuf/encoding/protowire.ConsumeVarint
+     0.09s  0.51% 62.75%      0.15s  0.85%  google.golang.org/protobuf/internal/impl.consumeInt64

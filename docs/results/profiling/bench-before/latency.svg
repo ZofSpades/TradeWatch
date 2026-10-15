@@ -1,0 +1,67 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="680" height="380" viewBox="0 0 680 380" font-family="Helvetica, Arial, sans-serif" font-size="12" fill="#1f2937">
+<rect width="680" height="380" fill="#ffffff"/>
+<text x="72" y="24" font-size="15" font-weight="bold">Latency from an event&#39;s publication</text>
+<line x1="72.0" x2="656.0" y1="324.0" y2="324.0" stroke="#e5e7eb"/>
+<text x="64.0" y="324.0" text-anchor="end" dominant-baseline="middle">10.0 ms</text>
+<line x1="72.0" x2="656.0" y1="239.3" y2="239.3" stroke="#e5e7eb"/>
+<text x="64.0" y="239.3" text-anchor="end" dominant-baseline="middle">100 ms</text>
+<line x1="72.0" x2="656.0" y1="154.7" y2="154.7" stroke="#e5e7eb"/>
+<text x="64.0" y="154.7" text-anchor="end" dominant-baseline="middle">1.00 s</text>
+<line x1="72.0" x2="656.0" y1="70.0" y2="70.0" stroke="#e5e7eb"/>
+<text x="64.0" y="70.0" text-anchor="end" dominant-baseline="middle">10.00 s</text>
+<text x="72.0" y="344.0" text-anchor="middle">1k</text>
+<text x="130.4" y="344.0" text-anchor="middle">2k</text>
+<text x="188.8" y="344.0" text-anchor="middle">5k</text>
+<text x="247.2" y="344.0" text-anchor="middle">10k</text>
+<text x="305.6" y="344.0" text-anchor="middle">20k</text>
+<text x="364.0" y="344.0" text-anchor="middle">30k</text>
+<text x="422.4" y="344.0" text-anchor="middle">40k</text>
+<text x="480.8" y="344.0" text-anchor="middle">50k</text>
+<text x="539.2" y="344.0" text-anchor="middle">60k</text>
+<text x="597.6" y="344.0" text-anchor="middle">80k</text>
+<text x="656.0" y="344.0" text-anchor="middle">100k</text>
+<text x="364.0" y="366.0" text-anchor="middle">target rate, events per second</text>
+<text transform="translate(16 197.0) rotate(-90)" text-anchor="middle">seconds (log scale)</text>
+<circle cx="72.0" cy="281.3" r="3.5" fill="#2563eb"/>
+<circle cx="130.4" cy="281.2" r="3.5" fill="#2563eb"/>
+<circle cx="188.8" cy="281.2" r="3.5" fill="#2563eb"/>
+<circle cx="247.2" cy="280.1" r="3.5" fill="#2563eb"/>
+<circle cx="305.6" cy="277.8" r="3.5" fill="#2563eb"/>
+<circle cx="364.0" cy="276.9" r="3.5" fill="#2563eb"/>
+<circle cx="422.4" cy="274.9" r="3.5" fill="#2563eb"/>
+<circle cx="480.8" cy="273.3" r="3.5" fill="#2563eb"/>
+<circle cx="539.2" cy="271.5" r="3.5" fill="#2563eb"/>
+<circle cx="597.6" cy="262.6" r="3.5" fill="#2563eb"/>
+<circle cx="656.0" cy="188.6" r="3.5" fill="#2563eb"/>
+<path d="M72.0 281.3 L130.4 281.2 L188.8 281.2 L247.2 280.1 L305.6 277.8 L364.0 276.9 L422.4 274.9 L480.8 273.3 L539.2 271.5 L597.6 262.6 L656.0 188.6" fill="none" stroke="#2563eb" stroke-width="2"/>
+<line x1="72.0" x2="94.0" y1="46" y2="46" stroke="#2563eb" stroke-width="2"/>
+<text x="100.0" y="46" dominant-baseline="middle">to stored alert, p50</text>
+<circle cx="72.0" cy="275.9" r="3.5" fill="#dc2626"/>
+<circle cx="130.4" cy="272.4" r="3.5" fill="#dc2626"/>
+<circle cx="188.8" cy="271.1" r="3.5" fill="#dc2626"/>
+<circle cx="247.2" cy="266.7" r="3.5" fill="#dc2626"/>
+<circle cx="305.6" cy="239.8" r="3.5" fill="#dc2626"/>
+<circle cx="364.0" cy="264.0" r="3.5" fill="#dc2626"/>
+<circle cx="422.4" cy="255.7" r="3.5" fill="#dc2626"/>
+<circle cx="480.8" cy="248.8" r="3.5" fill="#dc2626"/>
+<circle cx="539.2" cy="248.0" r="3.5" fill="#dc2626"/>
+<circle cx="597.6" cy="196.7" r="3.5" fill="#dc2626"/>
+<circle cx="656.0" cy="142.0" r="3.5" fill="#dc2626"/>
+<path d="M72.0 275.9 L130.4 272.4 L188.8 271.1 L247.2 266.7 L305.6 239.8 L364.0 264.0 L422.4 255.7 L480.8 248.8 L539.2 248.0 L597.6 196.7 L656.0 142.0" fill="none" stroke="#dc2626" stroke-width="2"/>
+<line x1="222.0" x2="244.0" y1="46" y2="46" stroke="#dc2626" stroke-width="2"/>
+<text x="250.0" y="46" dominant-baseline="middle">to stored alert, p99</text>
+<circle cx="72.0" cy="266.7" r="3.5" fill="#16a34a"/>
+<circle cx="130.4" cy="187.1" r="3.5" fill="#16a34a"/>
+<circle cx="188.8" cy="215.7" r="3.5" fill="#16a34a"/>
+<circle cx="247.2" cy="239.6" r="3.5" fill="#16a34a"/>
+<circle cx="305.6" cy="251.4" r="3.5" fill="#16a34a"/>
+<circle cx="364.0" cy="265.3" r="3.5" fill="#16a34a"/>
+<circle cx="422.4" cy="256.5" r="3.5" fill="#16a34a"/>
+<circle cx="480.8" cy="253.7" r="3.5" fill="#16a34a"/>
+<circle cx="539.2" cy="251.2" r="3.5" fill="#16a34a"/>
+<circle cx="597.6" cy="197.1" r="3.5" fill="#16a34a"/>
+<circle cx="656.0" cy="141.7" r="3.5" fill="#16a34a"/>
+<path d="M72.0 266.7 L130.4 187.1 L188.8 215.7 L247.2 239.6 L305.6 251.4 L364.0 265.3 L422.4 256.5 L480.8 253.7 L539.2 251.2 L597.6 197.1 L656.0 141.7" fill="none" stroke="#16a34a" stroke-width="2" stroke-dasharray="6 4"/>
+<line x1="372.0" x2="394.0" y1="46" y2="46" stroke="#16a34a" stroke-width="2" stroke-dasharray="6 4"/>
+<text x="400.0" y="46" dominant-baseline="middle">to detector, p99</text>
+</svg>
