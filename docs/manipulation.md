@@ -121,8 +121,10 @@ are identical to those of an in-process run of the same session.
 `POST /api/v1/sim/scenarios {"scenario": "spoofing.layering", "symbol": "QZAP"}`
 starts a scenario at the current simulated time. Marking the close starts
 90 s before the close. The command reaches the running simulation through
-its command queue and is applied between two simulation steps. The dashboard
-uses this for its labelled demo scenarios.
+its command queue and is applied between two simulation steps. The dashboard's
+Simulator page uses this for its labelled demo scenarios. So does `make demo`,
+which then reads each episode's label from the `groundtruth` topic and finds
+the alert that matches it by the evaluator's rule (`eval.Matches`).
 
 Triggered episodes are labelled like planned ones. A run that receives
 triggers depends on when they arrive, so evaluation runs never use them.

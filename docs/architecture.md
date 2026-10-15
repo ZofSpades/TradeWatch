@@ -54,8 +54,10 @@ ground truth ([detectors.md](detectors.md#evaluation)). The replay tool
 reruns detection over marketsim's recordings, which carry their reference
 data and labels.
 
-Two more tools exercise the running stack:
+Three more tools exercise the running stack:
 
+- `demo` injects labelled scenarios through the API and pairs each
+  episode's ground-truth label with the alert it raised (`make demo`).
 - `bench` drives marketsim at rising rates and measures every stage
   ([performance.md](performance.md)).
 - `chaos` checks the alerts stored while consumers are killed and
@@ -94,7 +96,7 @@ default 6). See [ADR-0003](adr/0003-partitioning-and-ordering.md).
 | `book_snapshots` | symbol | `BookSnapshot` | marketsim | ingest | 1 day |
 | `market_events` | symbol | `MarketEvent` | ingest | detector | 1 day |
 | `refdata` | account / symbol / session | `RefDataRecord` | marketsim | ingest | compacted |
-| `groundtruth` | session | `GroundTruthLabel` | marketsim | none yet (the evaluator and replay take labels from simulations and recordings) | 7 days |
+| `groundtruth` | session | `GroundTruthLabel` | marketsim | `demo` only (the evaluator and replay take labels from simulations and recordings) | 7 days |
 | `alerts` | alert key | `Alert` | detector | alertsink | 7 days |
 | `dlq` | source key | `DeadLetter` | ingest | operators | 7 days |
 | `rules_audit` | rule-set digest | `RuleSetSnapshot` | detector | alertsink | compacted |

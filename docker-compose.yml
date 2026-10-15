@@ -312,6 +312,16 @@ services:
       timeout: 3s
       retries: 20
 
+  # `make demo` (cmd/demo): injects labelled abuse scenarios through the
+  # dashboard's proxy and reports the alert each one raised.
+  demo:
+    image: tradewatch/backend:local
+    profiles: ["tools"]
+    command: ["demo"]
+    environment:
+      TW_KAFKA_BROKERS: kafka:9092
+      TW_API_ADMIN_PASSWORD: ${TW_API_ADMIN_PASSWORD:?TW_API_ADMIN_PASSWORD is not set - run `make env`}
+
   # Node toolchain used by `make web-test`. node_modules lives in a volume so
   # that the container's Linux packages never mix with a host install.
   webtools:

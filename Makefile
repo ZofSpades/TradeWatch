@@ -34,6 +34,10 @@ infra: env ## Start Kafka, Postgres and Redis and wait until they are healthy
 up: env ## Build and start the stack and wait until every service is healthy
 	$(COMPOSE) up -d --build --wait
 
+.PHONY: demo
+demo: up ## Start everything, inject labelled abuse and show the alerts it raises (SCENARIOS=a,b to choose)
+	$(COMPOSE) run --rm --no-deps demo demo $(if $(SCENARIOS),-scenarios $(SCENARIOS))
+
 .PHONY: down
 down: ## Stop the stack, keeping data volumes
 	$(COMPOSE) --profile tools down --remove-orphans
