@@ -80,17 +80,26 @@ try {
   await adminPage.waitForSelector(".live-dot.live", { timeout: 15_000 });
   await adminPage.getByLabel("Type", { exact: true }).selectOption("quote_stuffing");
   // Trigger through the API while the queue stays open: only the live feed
-  // inserts rows marked fresh, so the new row proves live delivery.
-  await adminPage.evaluate(async () => {
-    const { token } = JSON.parse(sessionStorage.getItem("tradewatch.session"));
-    const res = await fetch("/api/v1/sim/scenarios", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ scenario: "quote_stuffing.burst" }),
+  // inserts rows marked fresh, so the new row proves live delivery. Not
+  // every injected burst is detected (recall is 0.93 in the evaluation), so
+  // the test triggers up to three.
+  let delivered = false;
+  for (let attempt = 1; attempt <= 3 && !delivered; attempt++) {
+    await adminPage.evaluate(async () => {
+      const { token } = JSON.parse(sessionStorage.getItem("tradewatch.session"));
+      const res = await fetch("/api/v1/sim/scenarios", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ scenario: "quote_stuffing.burst" }),
+      });
+      if (res.status !== 202) throw new Error(`trigger: HTTP ${res.status} ${await res.text()}`);
     });
-    if (res.status !== 202) throw new Error(`trigger: HTTP ${res.status} ${await res.text()}`);
-  });
-  await adminPage.waitForSelector("table[aria-label=Alerts] tbody tr.fresh", { timeout: 120_000 });
+    delivered = await adminPage
+      .waitForSelector("table[aria-label=Alerts] tbody tr.fresh", { timeout: 60_000 })
+      .then(() => true, () => false);
+    if (!delivered) console.log(`  burst ${attempt} raised no alert within 60 s`);
+  }
+  assert.ok(delivered, "none of three injected quote-stuffing bursts raised a live alert");
 
   step("the simulator page schedules a scenario");
   await adminPage.keyboard.press("4");
