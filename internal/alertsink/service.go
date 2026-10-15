@@ -195,19 +195,11 @@ func (s *Service) Run(ctx context.Context) error {
 			}
 		})
 		if records := fetches.Records(); len(records) > 0 {
-			if err := s.process(ctx, records); err != nil {
+			if err := s.finish(ctx, records); err != nil {
 				if ctx.Err() != nil {
 					return nil
 				}
 				return err
-			}
-			if err := s.cl.CommitRecords(ctx, records...); err != nil {
-				// The records were stored; a redelivery after a failed commit
-				// is absorbed by the alert key.
-				s.m.commits.WithLabelValues("error").Inc()
-				s.log.Warn("offset commit failed", "err", err)
-			} else {
-				s.m.commits.WithLabelValues("ok").Inc()
 			}
 		} else if s.stale {
 			s.rebuild(ctx)
@@ -221,6 +213,32 @@ func (s *Service) Run(ctx context.Context) error {
 		s.m.lag.Set(float64(lag))
 		s.cl.AllowRebalance()
 	}
+	return nil
+}
+
+// shutdownGrace bounds how long a batch may run on after shutdown begins.
+const shutdownGrace = 10 * time.Second
+
+// finish stores a batch and commits its offsets. A batch in progress when
+// shutdown begins is still finished and committed, within shutdownGrace, so
+// a graceful stop redelivers nothing. Ingest and the detectors make a final
+// commit on the way out for the same reason.
+func (s *Service) finish(ctx context.Context, records []*kgo.Record) error {
+	bctx, cancel := context.WithCancel(context.WithoutCancel(ctx))
+	defer cancel()
+	stop := context.AfterFunc(ctx, func() { time.AfterFunc(shutdownGrace, cancel) })
+	defer stop()
+	if err := s.process(bctx, records); err != nil {
+		return err
+	}
+	if err := s.cl.CommitRecords(bctx, records...); err != nil {
+		// The records were stored; a redelivery after a failed commit is
+		// absorbed by the alert key.
+		s.m.commits.WithLabelValues("error").Inc()
+		s.log.Warn("offset commit failed", "err", err)
+		return nil
+	}
+	s.m.commits.WithLabelValues("ok").Inc()
 	return nil
 }
 

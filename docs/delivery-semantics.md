@@ -46,6 +46,7 @@ flowchart LR
 | A detector is rebalanced or stopped gracefully | Its partitions move | The new owner replays from the checkpoint's low-water offset and produces nothing before the frontier. Integration tests check that no alert is lost or duplicated. |
 | A detector crashes between a flush and the next commit | Alerts since the last commit are produced again | Same alert keys. The sink increments `deliveries` instead of adding rows. |
 | A detector is stopped while it is still rebuilding | — | It does not commit until its replay reaches the previous frontier, so the previous checkpoint stays in force |
+| alertsink is stopped gracefully during a batch | — | It finishes the batch and commits its offsets, for up to 10 s after the stop, so a restart redelivers nothing |
 | alertsink crashes after the database commit, before committing offsets | The batch is redelivered | The upsert finds every key and changes only `deliveries` and `last_seen_at`. The Redis views missed nothing, because Redis is updated only on first insert. |
 | alertsink crashes after the database commit, before updating Redis | The live views miss those alerts | The next sink rebuilds the views from Postgres when it starts |
 | Postgres is unavailable | The sink stops making progress and commits nothing | It retries with exponential backoff (up to 30 s between attempts, ten attempts per batch), then exits so the orchestrator restarts it. Kafka keeps the records. |
