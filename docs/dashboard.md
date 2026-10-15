@@ -126,7 +126,9 @@ dialog is open.
   Content-hashed assets are cached as immutable. nginx also proxies `/api`
   to the API, with buffering off so that events reach the browser at once.
   The dashboard and the API therefore share one origin, and no CORS is
-  needed.
+  needed. nginx looks the API up by name for each request, through the
+  container's resolvers, so recreating the API container with a new
+  address does not break the proxy.
 
 ## Tests
 
