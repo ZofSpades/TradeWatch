@@ -154,8 +154,8 @@ events, encoded and labelled exactly as marketsim publishes them.
 
 | Benchmark | Median | Allocations |
 | --- | --- | --- |
-| `Parse`: decode, validate and enrich one raw record | 1.48 µs ± 7% | 12 per record (650 bytes) |
-| `SequencerInOrder`: release events that arrive in order, the common case | 398 ns ± 11% per event | 0.13 per event |
+| `Parse`: decode, validate and enrich one raw record | 1.55 µs ± 14% | 12 per record (650 bytes) |
+| `SequencerInOrder`: release events that arrive in order, the common case | 409 ns ± 8% per event | 0.13 per event |
 
 ## Metrics
 

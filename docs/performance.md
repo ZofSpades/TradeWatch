@@ -82,9 +82,9 @@ services spend per record:
 
 - one simulator-like order-book operation: 290 ns
   ([matching-engine.md](matching-engine.md#performance));
-- every detector over one event: 1.84 µs
+- every detector over one event: 1.64 µs
   ([detectors.md](detectors.md#performance));
-- parsing one raw record: 1.48 µs, and sequencing it: 398 ns
+- parsing one raw record: 1.55 µs, and sequencing it: 409 ns
   ([ingest.md](ingest.md#performance)).
 
 The rest of ingest's 9.8 µs per event goes to:

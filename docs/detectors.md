@@ -607,17 +607,17 @@ benchstat summary (median of 10 runs, 95% confidence interval) in
 
 | Rules enabled | Time per event | Allocations per event |
 | --- | --- | --- |
-| All five, as the service runs them | 1.84 µs ± 9% | 3.9 (533 bytes) |
-| Wash trading only | 582 ns ± 14% | 1.3 |
-| Spoofing only | 921 ns ± 15% | 1.7 |
-| Momentum ignition only | 656 ns ± 9% | 1.5 |
-| Quote stuffing only | 1.14 µs ± 12% | 2.9 |
-| Marking the close only | 652 ns ± 10% | 1.5 |
+| All five, as the service runs them | 1.64 µs ± 16% | 4.2 (580 bytes) |
+| Wash trading only | 506 ns ± 17% | 1.3 |
+| Spoofing only | 674 ns ± 7% | 1.7 |
+| Momentum ignition only | 616 ns ± 17% | 1.5 |
+| Quote stuffing only | 1.20 µs ± 17% | 3.2 |
+| Marking the close only | 453 ns ± 9% | 1.5 |
 
 A single-rule run still pays for the engine's shared bookkeeping: the
 market and order state of every symbol. Each such row is that base plus
 one detector, not the detector alone. Quote stuffing costs the most. At
-1.84 µs per event, one core runs every detector over about 540,000 events
+1.64 µs per event, one core runs every detector over about 610,000 events
 per second.
 
 ## Tests
