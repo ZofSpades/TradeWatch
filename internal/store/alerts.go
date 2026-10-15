@@ -269,7 +269,7 @@ func (s *Store) List(ctx context.Context, f Filter) ([]*Alert, string, error) {
 		where = append(where, "symbol = "+arg(f.Symbol))
 	}
 	if f.Account != "" {
-		where = append(where, arg(f.Account)+" = ANY (account_ids)")
+		where = append(where, "account_ids @> ARRAY["+arg(f.Account)+"]")
 	}
 	if f.Session != "" {
 		where = append(where, "session_id = "+arg(f.Session))
