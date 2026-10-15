@@ -7,7 +7,7 @@ const SHORTCUTS: [string, string][] = [
   ["d", "Dismiss the selected alert"],
   ["c", "Comment on the selected alert"],
   ["r", "Reload the queue"],
-  ["/", "Filter by symbol"],
+  ["/", "Search alerts"],
   ["1 / 2 / 3 / 4", "Alerts / Rules / System / Simulator (admins)"],
   ["?", "This help"],
   ["Esc", "Close a dialog"],

@@ -236,6 +236,9 @@ type Filter struct {
 	Account   string
 	Session   string
 	MinScore  float64
+	// Search matches an account, a beneficial owner, a symbol or a rule ID,
+	// ignoring case, a session ID exactly, or the start of an alert key.
+	Search string
 	// Limit is the page size: 50 by default, at most 500.
 	Limit int
 	// Cursor continues from a previous page.
@@ -273,6 +276,10 @@ func (s *Store) List(ctx context.Context, f Filter) ([]*Alert, string, error) {
 	}
 	if f.MinScore > 0 {
 		where = append(where, "score >= "+arg(f.MinScore))
+	}
+	if q := strings.TrimSpace(f.Search); q != "" {
+		where = append(where, fmt.Sprintf("(account_ids @> ARRAY[upper(%[1]s)] OR beneficial_owner_ids @> ARRAY[upper(%[1]s)] "+
+			"OR symbol = upper(%[1]s) OR upper(rule_id) = upper(%[1]s) OR session_id = %[1]s OR starts_with(alert_key, lower(%[1]s)))", arg(q)))
 	}
 	if f.Cursor != "" {
 		t, key, err := decodeCursor(f.Cursor)

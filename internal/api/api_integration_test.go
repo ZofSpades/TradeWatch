@@ -11,6 +11,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
@@ -277,6 +278,24 @@ func TestAlertWorkflowOverHTTP(t *testing.T) {
 	expect(t, "bad status filter", code, 400, body)
 	code, body, _ = e.do("GET", "/api/v1/alerts?cursor=%21%21", token, nil)
 	expect(t, "bad cursor", code, 400, body)
+	for q, want := range map[string][]string{"acc-1": {batch[2].GetAlertKey(), key, batch[0].GetAlertKey()}, key: {key}, "ACC-404": {}} {
+		code, body, _ = e.do("GET", "/api/v1/alerts?q="+q, token, nil)
+		expect(t, "search "+q, code, 200, body)
+		var found struct {
+			Alerts []struct{ Key string } `json:"alerts"`
+		}
+		var keys []string
+		if err := json.Unmarshal(body, &found); err == nil {
+			for _, a := range found.Alerts {
+				keys = append(keys, a.Key)
+			}
+		}
+		if !slices.Equal(keys, want) && !(len(keys) == 0 && len(want) == 0) {
+			t.Errorf("search %q found %v, want %v", q, keys, want)
+		}
+	}
+	code, body, _ = e.do("GET", "/api/v1/alerts?q="+strings.Repeat("x", 101), token, nil)
+	expect(t, "search too long", code, 400, body)
 
 	code, body, _ = e.do("GET", "/api/v1/alerts/"+key, token, nil)
 	expect(t, "detail", code, 200, body)

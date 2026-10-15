@@ -30,6 +30,7 @@ export interface AlertQuery {
   abuse_type?: string;
   symbol?: string;
   account?: string;
+  q?: string;
   min_score?: number;
   limit?: number;
   cursor?: string;

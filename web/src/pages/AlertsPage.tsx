@@ -7,11 +7,13 @@ import { Score, SeverityBadge, StatusBadge } from "../components/Badges";
 import { fmtShort, statusLabel, typeLabel } from "../format";
 import { useShortcuts } from "../keyboard";
 import { useLiveEvents } from "../live";
+import { matchesSearch } from "../search";
 import { AlertDetail } from "./AlertDetail";
 
 interface Filters {
   status: Status | "";
   abuse_type: string;
+  q: string;
   symbol: string;
   min_score: string;
 }
@@ -22,6 +24,7 @@ function matches(f: Filters, a: AlertSummary): boolean {
   return (
     (f.status === "" || a.status === f.status) &&
     (f.abuse_type === "" || a.abuse_type === f.abuse_type) &&
+    matchesSearch(f.q, a) &&
     (f.symbol === "" || a.symbol === f.symbol.toUpperCase()) &&
     (f.min_score === "" || a.score >= Number(f.min_score))
   );
@@ -31,6 +34,7 @@ function query(f: Filters, cursor?: string): AlertQuery {
   return {
     status: f.status,
     abuse_type: f.abuse_type,
+    q: f.q.trim(),
     symbol: f.symbol.toUpperCase(),
     min_score: f.min_score === "" ? undefined : Number(f.min_score),
     limit: PAGE,
@@ -46,13 +50,13 @@ interface Props {
 /** AlertsPage is the analyst's queue, with the selected alert beside it. */
 export function AlertsPage({ selected, onSelect }: Props) {
   const client = useClient();
-  const [filters, setFilters] = useState<Filters>({ status: "open", abuse_type: "", symbol: "", min_score: "" });
+  const [filters, setFilters] = useState<Filters>({ status: "open", abuse_type: "", q: "", symbol: "", min_score: "" });
   const [alerts, setAlerts] = useState<AlertSummary[]>([]);
   const [next, setNext] = useState<string | undefined>();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [fresh, setFresh] = useState<Set<string>>(new Set());
-  const symbolRef = useRef<HTMLInputElement>(null);
+  const searchRef = useRef<HTMLInputElement>(null);
   const rowRefs = useRef(new Map<string, HTMLTableRowElement>());
 
   const load = useCallback(async () => {
@@ -121,7 +125,7 @@ export function AlertsPage({ selected, onSelect }: Props) {
     ArrowDown: () => move(1),
     ArrowUp: () => move(-1),
     r: () => void load(),
-    "/": () => symbolRef.current?.focus(),
+    "/": () => searchRef.current?.focus(),
   });
 
   const set = (patch: Partial<Filters>) => setFilters((f) => ({ ...f, ...patch }));
@@ -153,10 +157,22 @@ export function AlertsPage({ selected, onSelect }: Props) {
             </select>
           </div>
           <div className="filter">
+            <label htmlFor="filter-search">Search</label>
+            <input
+              id="filter-search"
+              ref={searchRef}
+              type="search"
+              value={filters.q}
+              placeholder="account, owner, rule, key"
+              size={22}
+              onChange={(e) => set({ q: e.target.value })}
+              onKeyDown={(e) => e.key === "Escape" && (e.currentTarget as HTMLInputElement).blur()}
+            />
+          </div>
+          <div className="filter">
             <label htmlFor="filter-symbol">Symbol</label>
             <input
               id="filter-symbol"
-              ref={symbolRef}
               value={filters.symbol}
               placeholder="any"
               size={6}
@@ -190,6 +206,7 @@ export function AlertsPage({ selected, onSelect }: Props) {
                 <th className="num">Score</th>
                 <th>Type</th>
                 <th>Symbol</th>
+                <th>Account</th>
                 <th>Severity</th>
                 <th>Status</th>
                 <th>Detected (UTC)</th>
@@ -214,6 +231,10 @@ export function AlertsPage({ selected, onSelect }: Props) {
                   </td>
                   <td>{typeLabel(a.abuse_type)}</td>
                   <td>{a.symbol}</td>
+                  <td className="nowrap">
+                    {a.account_ids[0]}
+                    {a.account_ids.length > 1 && <span className="muted"> +{a.account_ids.length - 1}</span>}
+                  </td>
                   <td>
                     <SeverityBadge severity={a.severity} />
                   </td>

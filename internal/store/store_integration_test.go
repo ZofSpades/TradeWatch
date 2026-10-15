@@ -276,6 +276,16 @@ func TestListFiltersAndPaginates(t *testing.T) {
 		{Filter{Status: StatusTriaged}, 1},
 		{Filter{MinScore: 70}, 5},
 		{Filter{Session: "S2"}, 0},
+		{Filter{Search: "acc-9"}, 9},
+		{Filter{Search: " ACC-1 "}, 25},
+		{Filter{Search: "bo-1"}, 25},
+		{Filter{Search: "moss"}, 9},
+		{Filter{Search: "tw-spoof-001"}, 25},
+		{Filter{Search: "S1"}, 25},
+		{Filter{Search: "s1"}, 0},
+		{Filter{Search: "K2"}, 5},
+		{Filter{Search: "ACC-9", MinScore: 70}, 2},
+		{Filter{Search: "%"}, 0},
 	} {
 		got, _, err := s.List(ctx, c.f)
 		if err != nil || len(got) != c.want {

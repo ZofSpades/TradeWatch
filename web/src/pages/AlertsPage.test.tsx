@@ -57,6 +57,25 @@ describe("AlertsPage", () => {
     expect(dataRows()).toHaveLength(3);
   });
 
+  it("searches from / and shows each alert's account", async () => {
+    const { calls } = api();
+    const { publish } = renderWithSession(<Harness />);
+    const user = userEvent.setup();
+    await waitFor(() => expect(dataRows()).toHaveLength(2));
+    expect(dataRows()[0]).toHaveTextContent("ACC-0001");
+
+    await user.keyboard("/");
+    expect(screen.getByLabelText("Search")).toHaveFocus();
+    await user.keyboard("acc-0042");
+    await waitFor(() => expect(calls.some((c) => c.path === "/api/v1/alerts?status=open&q=acc-0042&limit=50")).toBe(true));
+
+    // Live arrivals follow the search too.
+    publish({ type: "alert.raised", alert: summary(11, { account_ids: ["ACC-0099"] }) });
+    publish({ type: "alert.raised", alert: summary(12, { account_ids: ["ACC-0042", "ACC-0043"] }) });
+    await waitFor(() => expect(dataRows()[0]).toHaveTextContent("ACC-0042 +1"));
+    expect(screen.queryByText("ACC-0099")).not.toBeInTheDocument();
+  });
+
   it("queries the API with the chosen filters", async () => {
     const { calls } = api();
     const user = userEvent.setup();

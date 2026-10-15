@@ -850,6 +850,8 @@ export interface operations {
                 /** @description Alerts involving this account */
                 account?: string;
                 session?: string;
+                /** @description Search: an account, a beneficial owner, a symbol or a rule ID, ignoring case; a session ID exactly; or the start of an alert key. */
+                q?: string;
                 min_score?: number;
                 limit?: number;
                 /** @description The next_cursor of the previous page */

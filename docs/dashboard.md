@@ -14,9 +14,11 @@ In the compose stack it is served on `http://localhost:3000`. Sign in as
 
 ## Screens
 
-**Alerts.** The queue lists alerts newest first.
+**Alerts.** The queue lists alerts newest first, with their accounts.
 - **Filters:** status (open by default), abuse type, symbol and minimum
   score. "Load more" pages through older alerts.
+- **Search** finds an account, a beneficial owner, a symbol or a rule ID,
+  ignoring case, a session ID, or an alert by the start of its key.
 - **Live arrivals:** alerts raised while the page is open appear at the top,
   highlighted, if they match the filters. Status changes by other analysts
   update in place.
@@ -86,7 +88,7 @@ is simulated.
 | `d` | Dismiss it (asks for a reason) |
 | `c` | Comment on it |
 | `r` | Reload the queue |
-| `/` | Filter by symbol |
+| `/` | Search alerts |
 | `1` / `2` / `3` / `4` | Alerts / Rules / System / Simulator (admins) |
 | `?` | Show the shortcuts |
 | `Esc` | Close a dialog |

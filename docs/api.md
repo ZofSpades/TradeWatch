@@ -56,7 +56,7 @@ curl -s "localhost:8080/api/v1/alerts?abuse_type=spoofing&limit=5" -H "Authoriza
 | --- | --- | --- |
 | `POST /api/v1/auth/login` | public | Exchange a username and password for a token |
 | `GET /api/v1/me` | analyst | The token's user, role and expiry |
-| `GET /api/v1/alerts` | analyst | Alerts, newest detection first. Filters: `status`, `abuse_type`, `symbol`, `account`, `session`, `min_score`. Paged with `limit` and `cursor`. |
+| `GET /api/v1/alerts` | analyst | Alerts, newest detection first. Filters: `status`, `abuse_type`, `symbol`, `account`, `session`, `min_score`, and `q`, which searches accounts, owners, symbols, rule IDs, sessions and key prefixes. Paged with `limit` and `cursor`. |
 | `GET /api/v1/alerts/{key}` | analyst | One alert with its features and thresholds, the orders and trades involved, the evidence timeline and the price chart, and its trace (`trace_id`, and `trace_url` into Jaeger when configured) |
 | `GET /api/v1/alerts/{key}/audit` | analyst | Everything that happened to the alert: raised, status changes and comments, with who and when |
 | `POST /api/v1/alerts/{key}/transitions` | analyst | Move the alert through the workflow |

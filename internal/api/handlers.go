@@ -70,7 +70,11 @@ func (s *Server) listAlerts(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 	f := store.Filter{
 		Status: store.Status(q.Get("status")), AbuseType: q.Get("abuse_type"), Symbol: q.Get("symbol"),
-		Account: q.Get("account"), Session: q.Get("session"), Cursor: q.Get("cursor"),
+		Account: q.Get("account"), Session: q.Get("session"), Search: q.Get("q"), Cursor: q.Get("cursor"),
+	}
+	if len(f.Search) > 100 {
+		problem(w, http.StatusBadRequest, "q must be at most 100 characters")
+		return
 	}
 	if f.Status != "" && !f.Status.Valid() {
 		problem(w, http.StatusBadRequest, "unknown status "+strconv.Quote(string(f.Status)))
