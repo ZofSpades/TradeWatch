@@ -60,10 +60,12 @@ from the stream alone.
 | Determinism (`TestDeterministicUnderSeed`) | The same seed produces an identical event stream, and a different seed produces a different one. |
 | Soak (`TestRandomizedSoak`) | 200,000 seeded operations, with invariant checks along the way. |
 
-The suite was mutation-checked before it was committed. Seven bugs were
-injected by hand: wrong trade price, priority kept on a size increase, a FOK
-off-by-one, inverted level ordering, overfilling a resting order, trading
-through a limit, and stale level aggregates. The suite caught every one.
+`make mutation-test` checks the suite against seven bugs written by hand:
+wrong trade price, priority kept on a size increase, a FOK off-by-one,
+inverted level ordering, overfilling a resting order, trading through a
+limit, and stale level aggregates. It injects them one at a time and
+requires a failing test for each. The suite catches every one
+([results/mutation/orderbook.txt](results/mutation/orderbook.txt)).
 
 ## Performance
 
