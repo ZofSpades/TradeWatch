@@ -1095,26 +1095,26 @@
           "production": false,
           "metrics": {
             "episodes": 264,
-            "detected": 244,
+            "detected": 245,
             "recall": {
-              "k": 244,
+              "k": 245,
               "n": 264,
-              "value": 0.9242424242424242,
-              "ci95_low": 0.8858894765903975,
-              "ci95_high": 0.950426159481299
+              "value": 0.928030303030303,
+              "ci95_low": 0.8903381032600972,
+              "ci95_high": 0.9534446367050968
             },
-            "alerts": 244,
-            "matched_alerts": 244,
+            "alerts": 245,
+            "matched_alerts": 245,
             "precision": {
-              "k": 244,
-              "n": 244,
+              "k": 245,
+              "n": 245,
               "value": 1,
-              "ci95_low": 0.9845003380831723,
+              "ci95_low": 0.984562625380435,
               "ci95_high": 1
             },
-            "f1": 0.9606299212598425,
-            "time_to_detect_median_s": 0.365529106,
-            "time_to_detect_p90_s": 0.562794672,
+            "f1": 0.962671905697446,
+            "time_to_detect_median_s": 0.365539861,
+            "time_to_detect_p90_s": 0.552268934,
             "clean_alerts": 0,
             "clean_symbol_hours": 86.66666666666666,
             "clean_alerts_per_100_symbol_hours": 0
@@ -1125,26 +1125,26 @@
           "production": false,
           "metrics": {
             "episodes": 264,
-            "detected": 241,
+            "detected": 245,
             "recall": {
-              "k": 241,
+              "k": 245,
               "n": 264,
-              "value": 0.9128787878787878,
-              "ci95_low": 0.8726683370338154,
-              "ci95_high": 0.9412459873573894
+              "value": 0.928030303030303,
+              "ci95_low": 0.8903381032600972,
+              "ci95_high": 0.9534446367050968
             },
-            "alerts": 241,
-            "matched_alerts": 241,
+            "alerts": 245,
+            "matched_alerts": 245,
             "precision": {
-              "k": 241,
-              "n": 241,
+              "k": 245,
+              "n": 245,
               "value": 1,
-              "ci95_low": 0.9843104234095119,
+              "ci95_low": 0.984562625380435,
               "ci95_high": 1
             },
-            "f1": 0.9544554455445544,
-            "time_to_detect_median_s": 0.364686356,
-            "time_to_detect_p90_s": 0.562794672,
+            "f1": 0.962671905697446,
+            "time_to_detect_median_s": 0.365794695,
+            "time_to_detect_p90_s": 0.571469418,
             "clean_alerts": 0,
             "clean_symbol_hours": 86.66666666666666,
             "clean_alerts_per_100_symbol_hours": 0

@@ -57,15 +57,19 @@ type stuffAccount struct {
 // cancel messages in a short window than any normal participant, with
 // orders that live only milliseconds and almost never trade.
 //
-// The baseline is the 95th percentile, over every account active in the
-// last baseline_window, of each account's busiest second. A percentile
-// rather than the maximum keeps a single bursting account from raising its
-// own bar.
+// The baseline is the 95th percentile, over every other account active in
+// the last baseline_window, of each account's busiest second. The judged
+// account is left out, so its own burst cannot raise its bar. A percentile
+// alone would not prevent that: with twenty accounts or fewer it is the
+// maximum.
 type stuffDetector struct {
 	accounts map[string]*stuffAccount
-	// baseline is cached per second of event time.
-	baselineSecond int64
-	baseline       float64
+	// The busiest second of every account active in the baseline window,
+	// sorted, and by account. They are collected once per second of event
+	// time.
+	peaksSecond int64
+	peaks       []int64
+	peakOf      map[string]int64
 }
 
 func newStuffDetector() Detector { return &stuffDetector{accounts: map[string]*stuffAccount{}} }
@@ -145,7 +149,7 @@ func (d *stuffDetector) OnEvent(c *Context) {
 	if count < p.MinMessages {
 		return
 	}
-	baseline := d.baselineRate(now, p)
+	baseline := d.baselineRate(now, p, acct)
 	multiple := float64(count) / p.BurstWindow.D().Seconds() / baseline
 	var fillRatio float64
 	if len(a.orders) > 0 {
@@ -200,15 +204,43 @@ func (d *stuffDetector) OnEvent(c *Context) {
 	})
 }
 
-// baselineRate is the 95th percentile of the accounts' busiest seconds in
-// the baseline window, at least one message per second.
-func (d *stuffDetector) baselineRate(now int64, p *stuffParams) float64 {
-	sec := now / int64(time.Second)
-	if sec == d.baselineSecond && d.baseline > 0 {
-		return d.baseline
+// baselineRate is the 95th percentile of the busiest seconds of the
+// accounts other than acct in the baseline window, at least one message
+// per second. A burst whose first second ends below the message threshold
+// would otherwise make that second the bar for the rest of the burst.
+func (d *stuffDetector) baselineRate(now int64, p *stuffParams, acct string) float64 {
+	if sec := now / int64(time.Second); sec != d.peaksSecond || d.peakOf == nil {
+		d.collectPeaks(now, p)
+		d.peaksSecond = sec
 	}
+	own := d.peakOf[acct]
+	n := len(d.peaks)
+	if own > 0 {
+		n--
+	}
+	if n <= 0 {
+		return 1
+	}
+	i := (n * 95) / 100
+	if own > 0 {
+		// Leave out one occurrence of the judged account's own peak.
+		if pos, _ := slices.BinarySearch(d.peaks, own); i >= pos {
+			i++
+		}
+	}
+	return max(1, float64(d.peaks[i]))
+}
+
+// collectPeaks gathers every account's busiest second in the baseline
+// window, and forgets accounts idle for the whole window.
+func (d *stuffDetector) collectPeaks(now int64, p *stuffParams) {
 	cut := now - p.BaselineWindow.Ns()
-	var peaks []int64
+	d.peaks = d.peaks[:0]
+	if d.peakOf == nil {
+		d.peakOf = map[string]int64{}
+	} else {
+		clear(d.peakOf)
+	}
 	for id, a := range d.accounts {
 		if len(a.msgs) == 0 && (len(a.peaks) == 0 || a.peaks[len(a.peaks)-1].t < cut) && a.second*int64(time.Second) < cut {
 			delete(d.accounts, id) // idle for the whole baseline window
@@ -221,16 +253,11 @@ func (d *stuffDetector) baselineRate(now int64, p *stuffParams) float64 {
 			}
 		}
 		if peak > 0 {
-			peaks = append(peaks, peak)
+			d.peaks = append(d.peaks, peak)
+			d.peakOf[id] = peak
 		}
 	}
-	baseline := 1.0
-	if len(peaks) > 0 {
-		slices.Sort(peaks)
-		baseline = max(1, float64(peaks[(len(peaks)*95)/100]))
-	}
-	d.baselineSecond, d.baseline = sec, baseline
-	return baseline
+	slices.Sort(d.peaks)
 }
 
 func trimTimes(xs []int64, cutoff int64) []int64 {

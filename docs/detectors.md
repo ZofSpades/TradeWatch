@@ -317,10 +317,15 @@ of the following hold:
 
 - there are at least `min_messages` messages;
 - the per-second rate is at least `min_rate_multiple` times the baseline.
-  The baseline is the 95th percentile, over every account active in the
-  last `baseline_window`, of each account's busiest second. It is at least
-  one message per second. A percentile rather than the maximum keeps a
-  bursting account from raising its own bar;
+  The baseline is the 95th percentile, over every other account active in
+  the last `baseline_window`, of each account's busiest second. It is at
+  least one message per second. The judged account is left out, so its
+  burst cannot raise its own bar. A percentile alone would not prevent
+  that: with twenty accounts or fewer it is the maximum. A burst that
+  started late in a second would then make that second's count the bar for
+  the rest of the burst. The end-to-end test caught the detector missing a
+  burst for exactly this reason, 25 seconds into a session
+  (`TestQuoteStuffingBurstAcrossASecondBoundaryIsAlerted`);
 - the account's fills in the window are at most `max_fill_ratio` of its new
   orders;
 - the orders it cancelled in the window lived a median of at most

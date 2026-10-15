@@ -402,6 +402,43 @@ func TestHumanDuration(t *testing.T) {
 	}
 }
 
+// A burst that starts late in a second ends that second below the message
+// threshold. That second must not become the bar the rest of the burst is
+// measured against: with twenty accounts or fewer active, the 95th
+// percentile of their busiest seconds is the maximum. The end-to-end test
+// caught a missed burst like this one, 25 seconds into a session.
+func TestQuoteStuffingBurstAcrossASecondBoundaryIsAlerted(t *testing.T) {
+	s := newStream(t, onlyRules(t, loadRules(t), "TW-STUFF-001"))
+	s.continuous(px-100, px+100, 500)
+	// A minute of normal flow from three accounts, two messages a second
+	// each.
+	for i := 0; i < 60; i++ {
+		for _, acct := range []string{"MM1", "MM2", "MM3"} {
+			id := s.limit(acct, buy, px-200, 100)
+			s.advance(50 * time.Millisecond)
+			s.cancel(acct, id, buy, px-200, 100, s.now-int64(50*time.Millisecond))
+		}
+		s.advance(850 * time.Millisecond)
+	}
+	// Start 150 ms before a second ends, so that 25 orders and their
+	// cancels, 50 messages, fall in that second.
+	sec := int64(time.Second)
+	s.advance(time.Duration(sec-s.now%sec) + 850*time.Millisecond)
+	for i := 0; i < 150; i++ {
+		id := s.limit("STUFF", buy, px-500, 100)
+		s.advance(3 * time.Millisecond)
+		s.cancel("STUFF", id, buy, px-500, 100, s.now-int64(3*time.Millisecond))
+		s.advance(3 * time.Millisecond)
+	}
+	alerts := s.alertsOf("TW-STUFF-001")
+	if len(alerts) != 1 || alerts[0].GetAccountIds()[0] != "STUFF" {
+		t.Fatalf("alerts = %v", alerts)
+	}
+	if f, _ := feature(alerts[0], "baseline_rate"); f.GetValue() != 2 {
+		t.Errorf("baseline = %v messages/s, want the other accounts' 2", f.GetValue())
+	}
+}
+
 func TestQuoteStuffingIgnoresBusyAccountsThatTrade(t *testing.T) {
 	s := newStream(t, onlyRules(t, loadRules(t), "TW-STUFF-001"))
 	s.continuous(px-100, px+100, 500)
