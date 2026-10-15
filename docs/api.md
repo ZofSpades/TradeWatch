@@ -67,6 +67,9 @@ curl -s "localhost:8080/api/v1/alerts?abuse_type=spoofing&limit=5" -H "Authoriza
 | `GET /api/v1/stream` | analyst | Server-sent events as alerts are raised and updated |
 | `GET /api/v1/rules` | analyst | The rule set most recently loaded by a detector |
 | `GET /api/v1/rules/{id}` | analyst | Every version of a rule that a detector has loaded, with its YAML source |
+| `GET /api/v1/evaluations`, `GET /api/v1/evaluations/{id}` | analyst | Evaluation runs, newest first: `make eval` runs and replays, with each abuse type's figures |
+| `GET /api/v1/recordings` | admin | The complete session recordings, newest first |
+| `POST /api/v1/replays` | admin | Replay a recording through the detectors with the current rules, in the background |
 | `GET /api/v1/sim/status`, `POST /api/v1/sim/start`, `POST /api/v1/sim/stop`, `PUT /api/v1/sim/pace`, `GET` and `PUT /api/v1/sim/injection`, `GET` and `POST /api/v1/sim/scenarios` | admin | The simulator's controls ([simulator.md](simulator.md), [manipulation.md](manipulation.md)) |
 | `GET /api/v1/openapi.yaml` | public | The OpenAPI document |
 
@@ -163,6 +166,26 @@ no authentication of their own. The API forwards `/api/v1/sim/*` to them for
 admins, without the caller's token or cookies, and logs every call with the
 admin's name. If marketsim cannot be reached, the API answers `502`.
 
+## Replays and evaluation runs
+
+An admin can replay one of marketsim's recordings with the rules the
+detectors run (`TW_API_RULES_DIR`, the same `rules/` directory in compose).
+The API runs the recording through the ingest stage and a detection engine
+in the background, like `make replay`, and scores the alerts against the
+recording's ground-truth labels, like the evaluator. One replay runs at a
+time; another request gets `409`.
+
+Each replay is stored in Postgres as an evaluation run
+([storage.md](storage.md#evaluation-runs)), which reports `running` until it
+is `done` or `failed`. `make eval` stores its runs in the same table, so
+`GET /api/v1/evaluations` lists both. A run that was still going when the
+API stopped is marked as failed when the API starts again.
+
+Only complete recordings are listed: marketsim writes a session's recording
+under a `.part` name and renames it when the session ends. A name with a
+path separator is refused. Without `TW_API_RECORDINGS_DIR` the replay
+endpoints answer `503`.
+
 ## Hardening
 
 - **Responses** carry `Cache-Control: no-store` and
@@ -188,6 +211,8 @@ admin's name. If marketsim cannot be reached, the API answers `502`.
 | `TW_API_PROMETHEUS_URL` | none | Prometheus, for `GET /api/v1/system` |
 | `TW_API_GRAFANA_URL` | none | Grafana as a browser reaches it; the System page links to its pipeline dashboard |
 | `TW_API_TRACES_URL` | none | The Jaeger UI as a browser reaches it; alert details link to their trace, and the System page to trace search |
+| `TW_API_RECORDINGS_DIR` | none | marketsim's recordings, for replays |
+| `TW_API_RULES_DIR` | `rules` | The rules replays run with |
 | `TW_OTLP_ENDPOINT` | none | Where to send traces ([observability.md](observability.md#tracing)) |
 | `TW_API_JWT_SECRET` | required, at least 32 bytes | Token signing secret |
 | `TW_API_TOKEN_TTL` | 1h | Token lifetime |
@@ -212,5 +237,7 @@ admin's name. If marketsim cannot be reached, the API answers `502`.
 | `TestStreamDeliversRaisedAndUpdatedAlerts` | A raised alert and a status change reach a connected event-stream client |
 | `TestBroadcastContinuesATracedAlertsTrace` | Streaming a traced alert adds a span under the alert sink's store span, which counts the clients reached; an untraced event adds none |
 | `TestUnreachableSimulatorIsABadGateway` | The proxy answers `502` when marketsim is down |
+| `TestReplayIsScoredAndStoredAsAnEvaluationRun` | A simulated session's recording is listed, a partial file and other files are not, bad names get `404`, a second replay gets `409`, and the replay finishes scored, newest first in the run list. A run the previous API left running is failed. |
+| `TestReplaysAreUnavailableWithoutARecordingsDirectory` | Without a recordings directory, the replay endpoints answer `503` |
 | `TestSystemSummarizesThePipelineFromPrometheus` and the other `TestSystem…` tests | Against a fake Prometheus: every figure, nulls for missing data, rounded and sorted dead-letter counts, services, history alignment and the five-second cache. Without Prometheus, or when it fails, the answer is a `503` that does not reveal the cause. |
 | `internal/auth` tests | Tampered payloads, `alg: none`, HS512, a wrong secret, wrong audience or issuer, a missing or past expiry, a token issued in the future, unknown users and changed roles are all refused |

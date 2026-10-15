@@ -150,8 +150,6 @@ The Kubernetes manifests are in [deploy/k8s](deploy/k8s/README.md).
 - The benchmark ran on one machine with one Kafka broker.
 - Authentication is two built-in users with HS256 JWTs. There is no TLS
   and no user management.
-- Replaying a recording is a CLI (`make replay`); the API has no replay
-  controls.
 - The Kubernetes manifests run single-node Kafka and Postgres without TLS,
   backups or network policies.
 

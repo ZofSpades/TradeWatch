@@ -48,6 +48,10 @@ type Config struct {
 	TokenTTL        time.Duration
 	AnalystPassword string
 	AdminPassword   string
+	// RecordingsDir enables replays of the recordings in it, run with the
+	// rules in RulesDir.
+	RecordingsDir string
+	RulesDir      string
 }
 
 // LoadConfig reads TW_API_*, TW_POSTGRES_URL and TW_REDIS_* variables. The
@@ -68,6 +72,8 @@ func LoadConfig(env *config.Env) (Config, error) {
 		TokenTTL:        env.Duration("TW_API_TOKEN_TTL", time.Hour),
 		AnalystPassword: env.Required("TW_API_ANALYST_PASSWORD"),
 		AdminPassword:   env.Required("TW_API_ADMIN_PASSWORD"),
+		RecordingsDir:   env.String("TW_API_RECORDINGS_DIR", ""),
+		RulesDir:        env.String("TW_API_RULES_DIR", "rules"),
 	}
 	if err := env.Err(); err != nil {
 		return cfg, err
@@ -128,6 +134,7 @@ type Server struct {
 	prom     *promClient // nil: GET /api/v1/system is unavailable
 	links    Links
 	sysCache systemCache
+	replays  *replayer // nil: replays are unavailable
 }
 
 // NewServer wires the API. simURL is the simulator's admin base URL.
@@ -165,6 +172,10 @@ func (s *Server) routes() []route {
 		{"GET /api/v1/stream", auth.RoleAnalyst, s.stream},
 		{"GET /api/v1/rules", auth.RoleAnalyst, s.rules},
 		{"GET /api/v1/rules/{id}", auth.RoleAnalyst, s.ruleHistory},
+		{"GET /api/v1/evaluations", auth.RoleAnalyst, s.listEvaluations},
+		{"GET /api/v1/evaluations/{id}", auth.RoleAnalyst, s.getEvaluation},
+		{"GET /api/v1/recordings", auth.RoleAdmin, s.listRecordings},
+		{"POST /api/v1/replays", auth.RoleAdmin, s.startReplay},
 		simulator("GET /api/v1/sim/status"),
 		simulator("POST /api/v1/sim/start"),
 		simulator("POST /api/v1/sim/stop"),
@@ -220,7 +231,9 @@ func (s *Server) Run(ctx context.Context, addr string) error {
 	}
 	shutdown, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	return srv.Shutdown(shutdown)
+	err := srv.Shutdown(shutdown)
+	s.replays.wait()
+	return err
 }
 
 type claimsKey struct{}

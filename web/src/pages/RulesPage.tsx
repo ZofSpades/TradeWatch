@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 
 import type { RuleHistory, RuleSet } from "../api/types";
 import { useClient } from "../auth";
+import { EvaluationRuns } from "../components/EvaluationRuns";
 import { fmtAgo, typeLabel } from "../format";
 
 interface Props {
@@ -9,7 +10,10 @@ interface Props {
   onSelect: (id?: string) => void;
 }
 
-/** RulesPage shows the rules in force and every version of each. */
+/**
+ * RulesPage shows the rules in force, every version of each, and the
+ * evaluation runs that measured them.
+ */
 export function RulesPage({ selected, onSelect }: Props) {
   const client = useClient();
   const [set, setSet] = useState<RuleSet | null>(null);
@@ -34,62 +38,65 @@ export function RulesPage({ selected, onSelect }: Props) {
 
   return (
     <div className="rules-layout">
-      <section aria-labelledby="rules-title">
-        <h2 id="rules-title">Rules in force</h2>
-        {error && (
-          <p className="error" role="alert">
-            {error}
-          </p>
-        )}
-        {set && (
-          <>
-            <p className="muted">
-              Loaded by <code>{set.loaded_by}</code> {fmtAgo(set.loaded_at)} · rule set <code>{set.ruleset_digest.slice(0, 12)}</code>
+      <div className="column">
+        <section aria-labelledby="rules-title">
+          <h2 id="rules-title">Rules in force</h2>
+          {error && (
+            <p className="error" role="alert">
+              {error}
             </p>
-            <table className="rules-table">
-              <thead>
-                <tr>
-                  <th>Rule</th>
-                  <th>Name</th>
-                  <th>Version</th>
-                  <th>Detects</th>
-                  <th>Taxonomy</th>
-                  <th>Enabled</th>
-                </tr>
-              </thead>
-              <tbody>
-                {set.rules.map((r) => (
-                  <tr
-                    key={r.rule_id}
-                    className={r.rule_id === selected ? "selected" : ""}
-                    aria-selected={r.rule_id === selected}
-                    tabIndex={0}
-                    onClick={() => onSelect(r.rule_id)}
-                    onKeyDown={(e) => e.key === "Enter" && onSelect(r.rule_id)}
-                  >
-                    <td>
-                      <code>{r.rule_id}</code>
-                    </td>
-                    <td>{r.name}</td>
-                    <td>
-                      v{r.version}
-                      {r.version_reused && (
-                        <span className="warn" title="Another version of this rule has the same version number but different content">
-                          {" "}
-                          reused
-                        </span>
-                      )}
-                    </td>
-                    <td>{typeLabel(r.detector)}</td>
-                    <td>{r.taxonomy_code}</td>
-                    <td>{r.enabled ? "yes" : "no"}</td>
+          )}
+          {set && (
+            <>
+              <p className="muted">
+                Loaded by <code>{set.loaded_by}</code> {fmtAgo(set.loaded_at)} · rule set <code>{set.ruleset_digest.slice(0, 12)}</code>
+              </p>
+              <table className="rules-table">
+                <thead>
+                  <tr>
+                    <th>Rule</th>
+                    <th>Name</th>
+                    <th>Version</th>
+                    <th>Detects</th>
+                    <th>Taxonomy</th>
+                    <th>Enabled</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </>
-        )}
-      </section>
+                </thead>
+                <tbody>
+                  {set.rules.map((r) => (
+                    <tr
+                      key={r.rule_id}
+                      className={r.rule_id === selected ? "selected" : ""}
+                      aria-selected={r.rule_id === selected}
+                      tabIndex={0}
+                      onClick={() => onSelect(r.rule_id)}
+                      onKeyDown={(e) => e.key === "Enter" && onSelect(r.rule_id)}
+                    >
+                      <td>
+                        <code>{r.rule_id}</code>
+                      </td>
+                      <td>{r.name}</td>
+                      <td>
+                        v{r.version}
+                        {r.version_reused && (
+                          <span className="warn" title="Another version of this rule has the same version number but different content">
+                            {" "}
+                            reused
+                          </span>
+                        )}
+                      </td>
+                      <td>{typeLabel(r.detector)}</td>
+                      <td>{r.taxonomy_code}</td>
+                      <td>{r.enabled ? "yes" : "no"}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </>
+          )}
+        </section>
+        <EvaluationRuns />
+      </div>
 
       {history && (
         <section aria-labelledby="history-title">

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { fmtDuration, fmtRate } from "./format";
+import { fmtBytes, fmtDuration, fmtRate, fmtRatio, fmtTTD } from "./format";
 
 describe("fmtDuration", () => {
   it("picks a unit that suits the duration", () => {
@@ -23,5 +23,30 @@ describe("fmtRate", () => {
     expect(fmtRate(6.53)).toBe("6.5");
     expect(fmtRate(1500.5)).toBe("1,501");
     expect(fmtRate(null)).toBe("–");
+  });
+});
+
+describe("fmtRatio", () => {
+  it("shows two decimals, or a dash when undefined", () => {
+    expect(fmtRatio(0.9312)).toBe("0.93");
+    expect(fmtRatio(0)).toBe("0.00");
+    expect(fmtRatio(null)).toBe("–");
+  });
+});
+
+describe("fmtBytes", () => {
+  it("scales the unit", () => {
+    expect(fmtBytes(512)).toBe("512 B");
+    expect(fmtBytes(3_500_000)).toBe("3.3 MB");
+    expect(fmtBytes(250 * 1024 * 1024)).toBe("250 MB");
+  });
+});
+
+describe("fmtTTD", () => {
+  it("shows whole seconds, and milliseconds under a second", () => {
+    expect(fmtTTD(0)).toBe("0 s");
+    expect(fmtTTD(0.4)).toBe("400 ms");
+    expect(fmtTTD(46.2)).toBe("46 s");
+    expect(fmtTTD(null)).toBe("–");
   });
 });

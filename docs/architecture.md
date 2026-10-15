@@ -73,7 +73,7 @@ Three more tools exercise the running stack:
 | `detector` (2 replicas) | Runs the rule-driven detectors and publishes alerts | admin `:8092` (internal) |
 | `migrate` | One-shot: applies the Postgres migrations | — |
 | `alertsink` | Stores alerts and rule sets in Postgres and keeps the Redis live views | admin `:8093` (internal) |
-| `api` | REST and server-sent events with JWT authentication; proxies simulator control for admins | `localhost:8080`, admin `:8094` (internal) |
+| `api` | REST and server-sent events with JWT authentication; proxies simulator control and replays recordings for admins | `localhost:8080`, admin `:8094` (internal) |
 | `web` | The dashboard, served by nginx, which proxies `/api` to the API | `localhost:3000` |
 | `prometheus` | Scrapes every admin port and evaluates the alerting rules ([observability.md](observability.md)) | `localhost:9090` |
 | `grafana` | Provisioned dashboards over Prometheus | `localhost:3001` |

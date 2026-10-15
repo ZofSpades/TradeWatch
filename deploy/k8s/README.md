@@ -93,5 +93,8 @@ These manifests are not a production deployment:
 - No TLS or authentication on Kafka, Postgres and Redis inside the cluster,
   and no NetworkPolicy.
 - No Ingress: reach the dashboard with `kubectl port-forward`.
+- Replays are off. marketsim keeps its recordings on an `emptyDir`, which the
+  api cannot read. To enable them, mount one ReadWriteMany volume at
+  `/recordings` in both and set `TW_API_RECORDINGS_DIR=/recordings` on the api.
 - The resource requests and limits are starting points, not measured
   sizing.

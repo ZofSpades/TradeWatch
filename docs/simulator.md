@@ -131,13 +131,18 @@ four market feeds ([ADR-0003](adr/0003-partitioning-and-ordering.md)).
 
 ## Recordings
 
-When `TW_SIM_RECORD_DIR` is set, each session is also written to
-`<session>.twrec.gz` (`internal/recording`). A recording holds a header with
-the simulator configuration, the reference data, every market event in
-emission order, and the ground-truth labels of injected abuse. Recordings keep
-`published_at` at zero, so recordings of the same configuration are
-identical. The writer flushes every two seconds. A crash therefore loses at
-most the last two seconds, and everything before that remains readable.
+When `TW_SIM_RECORD_DIR` is set, each session is also recorded
+(`internal/recording`). The file is `<session>.twrec.gz.part` while the
+session runs and is renamed to `<session>.twrec.gz` when it ends, so a file
+with the final name is always complete. `make replay` and the API's replays
+([api.md](api.md#replays-and-evaluation-runs)) use those.
+
+A recording holds a header with the simulator configuration, the reference
+data, every market event in emission order, and the ground-truth labels of
+injected abuse. Recordings keep `published_at` at zero, so recordings of the
+same configuration are identical. The writer flushes every two seconds. A crash therefore loses at
+most the last two seconds, and everything before that remains readable in
+the `.part` file.
 
 ## Control API
 

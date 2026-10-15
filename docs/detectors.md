@@ -422,7 +422,9 @@ The run is deterministic. A native run and a run in Docker on another Go
 patch version produced byte-identical reports. The full report, with
 confidence intervals, time to detect, recall by scenario and the parameter
 sweeps, is [docs/results/eval](results/eval/README.md). The table below
-quotes it.
+quotes it. `make eval` also records the run, with the production rules'
+figures, in Postgres, where the dashboard's Rules page lists it next to the
+replays admins run ([storage.md](storage.md#evaluation-runs)).
 
 | Abuse type | Episodes | Recall | Precision | False alerts per 100 symbol-hours without abuse | Baseline recall | Baseline precision | Baseline false alerts |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |

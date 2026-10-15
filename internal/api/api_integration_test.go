@@ -36,6 +36,7 @@ type simCall struct {
 type apiEnv struct {
 	t      *testing.T
 	base   string
+	srv    *Server
 	st     *store.Store
 	views  *live.Views
 	router routers.Router
@@ -44,7 +45,9 @@ type apiEnv struct {
 	simCalls []simCall
 }
 
-func setup(t *testing.T) *apiEnv {
+// setup starts the API against the test databases. Each before function
+// configures the server before it serves.
+func setup(t *testing.T, before ...func(*Server)) *apiEnv {
 	t.Helper()
 	ctx, cancel := context.WithCancel(context.Background())
 	t.Cleanup(cancel)
@@ -86,6 +89,10 @@ func setup(t *testing.T) *apiEnv {
 	if err := srv.SetMonitoring("", Links{Traces: "http://jaeger.test:16686/"}); err != nil {
 		t.Fatal(err)
 	}
+	for _, b := range before {
+		b(srv)
+	}
+	e.srv = srv
 	go srv.hub.run(ctx)
 	deadline := time.Now().Add(10 * time.Second)
 	for !srv.hub.ready.Load() {

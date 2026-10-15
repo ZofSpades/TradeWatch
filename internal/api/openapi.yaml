@@ -29,6 +29,7 @@ tags:
   - name: live
   - name: system
   - name: simulator
+  - name: evaluations
 paths:
   /api/v1/auth/login:
     post:
@@ -278,6 +279,89 @@ paths:
               schema: {$ref: '#/components/schemas/RuleHistory'}
         '401': {$ref: '#/components/responses/Unauthorized'}
         '404': {$ref: '#/components/responses/NotFound'}
+  /api/v1/evaluations:
+    get:
+      tags: [evaluations]
+      summary: Evaluation runs, newest first
+      description: |
+        Runs of `make eval` over simulated sessions, and replays of
+        recordings that admins started. Both are scored against the
+        simulator's ground-truth labels.
+      operationId: listEvaluations
+      parameters:
+        - {name: limit, in: query, schema: {type: integer, minimum: 1, maximum: 100, default: 20}}
+      responses:
+        '200':
+          description: The runs
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/EvaluationList'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+  /api/v1/evaluations/{id}:
+    parameters:
+      - {name: id, in: path, required: true, schema: {type: integer, minimum: 1}}
+    get:
+      tags: [evaluations]
+      summary: One evaluation run
+      operationId: getEvaluation
+      responses:
+        '200':
+          description: The run
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/EvaluationRun'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '404': {$ref: '#/components/responses/NotFound'}
+  /api/v1/recordings:
+    get:
+      tags: [evaluations]
+      summary: The session recordings that can be replayed, newest first (admin)
+      description: A session still being recorded is not listed.
+      operationId: listRecordings
+      responses:
+        '200':
+          description: The recordings
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/RecordingList'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '503': {$ref: '#/components/responses/ReplaysUnavailable'}
+  /api/v1/replays:
+    post:
+      tags: [evaluations]
+      summary: Replay a recording through the detectors with the current rules (admin)
+      description: |
+        The replay runs in the background, one at a time. It is stored as
+        an evaluation run, which reports its progress and, when it is done,
+        the figures of each abuse type against the recording's labels.
+      operationId: startReplay
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [recording]
+              properties:
+                recording: {type: string, example: live-20261015T122357Z-001.twrec.gz}
+      responses:
+        '202':
+          description: The replay started
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/EvaluationRun'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409':
+          description: A replay is already running
+          content:
+            application/problem+json:
+              schema: {$ref: '#/components/schemas/Problem'}
+        '503': {$ref: '#/components/responses/ReplaysUnavailable'}
   /api/v1/sim/status:
     get:
       tags: [simulator]
@@ -443,6 +527,11 @@ components:
           schema: {$ref: '#/components/schemas/Problem'}
     Unavailable:
       description: A dependency (Redis) is unavailable
+      content:
+        application/problem+json:
+          schema: {$ref: '#/components/schemas/Problem'}
+    ReplaysUnavailable:
+      description: Replays are not configured (TW_API_RECORDINGS_DIR)
       content:
         application/problem+json:
           schema: {$ref: '#/components/schemas/Problem'}
@@ -684,6 +773,52 @@ components:
       properties:
         rule_id: {type: string}
         versions: {type: array, items: {$ref: '#/components/schemas/RuleVersion'}}
+    EvaluationRun:
+      type: object
+      required: [id, kind, status, source, requested_by, rules_digest, started_at, types]
+      properties:
+        id: {type: integer}
+        kind: {type: string, enum: [eval, replay]}
+        status: {type: string, enum: [running, done, failed]}
+        source: {type: string, description: "The simulation plan, or the recording's file name"}
+        summary: {type: string, description: "What the run covered, once it is done"}
+        requested_by: {type: string}
+        rules_digest: {type: string}
+        started_at: {type: string, format: date-time}
+        finished_at: {type: string, format: date-time}
+        error: {type: string}
+        types: {type: array, items: {$ref: '#/components/schemas/TypeFigures'}}
+    TypeFigures:
+      type: object
+      description: One abuse type's figures. A rate is null when undefined, for example precision without alerts.
+      required: [abuse_type, episodes, detected, alerts, matched, recall, precision, f1, median_ttd_seconds]
+      properties:
+        abuse_type: {$ref: '#/components/schemas/AbuseType'}
+        episodes: {type: integer, description: "Labelled episodes"}
+        detected: {type: integer, description: "Episodes with at least one matching alert"}
+        alerts: {type: integer}
+        matched: {type: integer, description: "Alerts that match an episode"}
+        recall: {type: number, nullable: true}
+        precision: {type: number, nullable: true}
+        f1: {type: number, nullable: true}
+        median_ttd_seconds: {type: number, nullable: true, description: "Simulated time from an episode's first order to its first matching alert"}
+    EvaluationList:
+      type: object
+      required: [runs]
+      properties:
+        runs: {type: array, items: {$ref: '#/components/schemas/EvaluationRun'}}
+    Recording:
+      type: object
+      required: [name, size_bytes, modified_at]
+      properties:
+        name: {type: string}
+        size_bytes: {type: integer}
+        modified_at: {type: string, format: date-time}
+    RecordingList:
+      type: object
+      required: [recordings]
+      properties:
+        recordings: {type: array, items: {$ref: '#/components/schemas/Recording'}}
     Quantiles:
       type: object
       description: Seconds, read from a Prometheus histogram whose bucket bounds are at most 1.5 times apart

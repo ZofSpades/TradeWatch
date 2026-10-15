@@ -252,6 +252,89 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/evaluations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Evaluation runs, newest first
+         * @description Runs of `make eval` over simulated sessions, and replays of
+         *     recordings that admins started. Both are scored against the
+         *     simulator's ground-truth labels.
+         */
+        get: operations["listEvaluations"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/evaluations/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        /** One evaluation run */
+        get: operations["getEvaluation"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/recordings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The session recordings that can be replayed, newest first (admin)
+         * @description A session still being recorded is not listed.
+         */
+        get: operations["listRecordings"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/replays": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Replay a recording through the detectors with the current rules (admin)
+         * @description The replay runs in the background, one at a time. It is stored as
+         *     an evaluation run, which reports its progress and, when it is done,
+         *     the figures of each abuse type against the recording's labels.
+         */
+        post: operations["startReplay"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/sim/status": {
         parameters: {
             query?: never;
@@ -567,6 +650,53 @@ export interface components {
             rule_id: string;
             versions: components["schemas"]["RuleVersion"][];
         };
+        EvaluationRun: {
+            id: number;
+            /** @enum {string} */
+            kind: "eval" | "replay";
+            /** @enum {string} */
+            status: "running" | "done" | "failed";
+            /** @description The simulation plan, or the recording's file name */
+            source: string;
+            /** @description What the run covered, once it is done */
+            summary?: string;
+            requested_by: string;
+            rules_digest: string;
+            /** Format: date-time */
+            started_at: string;
+            /** Format: date-time */
+            finished_at?: string;
+            error?: string;
+            types: components["schemas"]["TypeFigures"][];
+        };
+        /** @description One abuse type's figures. A rate is null when undefined, for example precision without alerts. */
+        TypeFigures: {
+            abuse_type: components["schemas"]["AbuseType"];
+            /** @description Labelled episodes */
+            episodes: number;
+            /** @description Episodes with at least one matching alert */
+            detected: number;
+            alerts: number;
+            /** @description Alerts that match an episode */
+            matched: number;
+            recall: number | null;
+            precision: number | null;
+            f1: number | null;
+            /** @description Simulated time from an episode's first order to its first matching alert */
+            median_ttd_seconds: number | null;
+        };
+        EvaluationList: {
+            runs: components["schemas"]["EvaluationRun"][];
+        };
+        Recording: {
+            name: string;
+            size_bytes: number;
+            /** Format: date-time */
+            modified_at: string;
+        };
+        RecordingList: {
+            recordings: components["schemas"]["Recording"][];
+        };
         /** @description Seconds, read from a Prometheus histogram whose bucket bounds are at most 1.5 times apart */
         Quantiles: {
             p50: number | null;
@@ -728,6 +858,15 @@ export interface components {
         };
         /** @description A dependency (Redis) is unavailable */
         Unavailable: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/problem+json": components["schemas"]["Problem"];
+            };
+        };
+        /** @description Replays are not configured (TW_API_RECORDINGS_DIR) */
+        ReplaysUnavailable: {
             headers: {
                 [name: string]: unknown;
             };
@@ -1144,6 +1283,118 @@ export interface operations {
             };
             401: components["responses"]["Unauthorized"];
             404: components["responses"]["NotFound"];
+        };
+    };
+    listEvaluations: {
+        parameters: {
+            query?: {
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The runs */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EvaluationList"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+        };
+    };
+    getEvaluation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The run */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EvaluationRun"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    listRecordings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The recordings */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RecordingList"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            503: components["responses"]["ReplaysUnavailable"];
+        };
+    };
+    startReplay: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @example live-20261015T122357Z-001.twrec.gz */
+                    recording: string;
+                };
+            };
+        };
+        responses: {
+            /** @description The replay started */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EvaluationRun"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            /** @description A replay is already running */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            503: components["responses"]["ReplaysUnavailable"];
         };
     };
     simStatus: {

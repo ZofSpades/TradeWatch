@@ -1,12 +1,16 @@
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 
-import type { SimInjection, SimStatus } from "../api/types";
+import type { EvaluationRun, Recording, SimInjection, SimStatus } from "../api/types";
 import { useAuth } from "../auth";
-import { fmtNumber, fmtTime, typeLabel } from "../format";
+import { RunFigures } from "../components/RunFigures";
+import { fmtBytes, fmtNumber, fmtTime, typeLabel } from "../format";
 
 const RATES: (keyof SimInjection)[] = ["wash_trading", "spoofing", "momentum_ignition", "quote_stuffing", "marking_the_close"];
 
-/** SimulatorPage lets an admin control the simulated market. */
+/**
+ * SimulatorPage lets an admin control the simulated market and replay its
+ * recordings through the detectors.
+ */
 export function SimulatorPage() {
   const { session, client } = useAuth();
   const [status, setStatus] = useState<SimStatus | null>(null);
@@ -15,6 +19,10 @@ export function SimulatorPage() {
   const [symbol, setSymbol] = useState("");
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [recordings, setRecordings] = useState<Recording[] | null>(null);
+  const [recording, setRecording] = useState("");
+  const [replayRun, setReplayRun] = useState<EvaluationRun | null>(null);
+  const [replayError, setReplayError] = useState<string | null>(null);
   const admin = session?.role === "admin";
 
   const refresh = useCallback(async () => {
@@ -33,9 +41,29 @@ export function SimulatorPage() {
       .scenarios()
       .then((s) => setScenarios(s.scenarios))
       .catch(() => {});
+    client
+      .recordings()
+      .then((r) => {
+        setRecordings(r.recordings);
+        setRecording(r.recordings[0]?.name ?? "");
+      })
+      .catch((err) => setReplayError(err instanceof Error ? err.message : String(err)));
     const t = setInterval(() => void refresh(), 5000);
     return () => clearInterval(t);
   }, [admin, client, refresh]);
+
+  // Follow a replay until it finishes.
+  const replayId = replayRun?.status === "running" ? replayRun.id : undefined;
+  useEffect(() => {
+    if (replayId === undefined) return;
+    const t = setInterval(() => {
+      client
+        .evaluation(replayId)
+        .then(setReplayRun)
+        .catch((err) => setReplayError(err instanceof Error ? err.message : String(err)));
+    }, 2000);
+    return () => clearInterval(t);
+  }, [client, replayId]);
 
   useEffect(() => {
     if (status?.injection && Object.keys(rates).length === 0) {
@@ -59,6 +87,15 @@ export function SimulatorPage() {
     }
   }
 
+  async function startReplay() {
+    setReplayError(null);
+    try {
+      setReplayRun(await client.replay(recording));
+    } catch (err) {
+      setReplayError(err instanceof Error ? err.message : String(err));
+    }
+  }
+
   function saveRates(e: FormEvent) {
     e.preventDefault();
     const injection = Object.fromEntries(RATES.map((k) => [k, Number(rates[k] ?? 0)])) as SimInjection;
@@ -67,44 +104,78 @@ export function SimulatorPage() {
 
   return (
     <div className="sim-layout">
-      <section aria-labelledby="sim-title">
-        <h2 id="sim-title">Simulated market</h2>
-        <p className="notice">Everything here is simulated: the market, its participants and the abuse injected into it.</p>
-        {error && (
-          <p className="error" role="alert">
-            {error}
+      <div className="column">
+        <section aria-labelledby="sim-title">
+          <h2 id="sim-title">Simulated market</h2>
+          <p className="notice">Everything here is simulated: the market, its participants and the abuse injected into it.</p>
+          {error && (
+            <p className="error" role="alert">
+              {error}
+            </p>
+          )}
+          {message && <p className="ok" role="status">{message}</p>}
+          {status && (
+            <dl className="facts">
+              <dt>State</dt>
+              <dd>{status.state}</dd>
+              <dt>Session</dt>
+              <dd>{status.session_id ?? "–"}</dd>
+              <dt>Market time</dt>
+              <dd>
+                {fmtTime(status.sim_time)} (session {fmtTime(status.session_open)}–{fmtTime(status.session_close)})
+              </dd>
+              <dt>Events published</dt>
+              <dd>{fmtNumber(status.events_published ?? 0)}</dd>
+              <dt>Labelled episodes</dt>
+              <dd>{fmtNumber(status.labels_published ?? 0)}</dd>
+              <dt>Pace</dt>
+              <dd>
+                {status.pace} {status.pace === "realtime" && `×${status.speed}`}
+              </dd>
+            </dl>
+          )}
+          <div className="actions">
+            <button type="button" onClick={() => void act("Sessions started.", client.simStart)}>
+              Start
+            </button>
+            <button type="button" onClick={() => void act("Session stopped.", client.simStop)}>
+              Stop
+            </button>
+          </div>
+        </section>
+
+        <section aria-labelledby="replay-title">
+          <h2 id="replay-title">Replay a recording</h2>
+          <p className="muted">
+            Runs a recorded session through the detectors with the current rules, and scores their alerts against the
+            session's ground truth. The runs are also on the Rules page.
           </p>
-        )}
-        {message && <p className="ok" role="status">{message}</p>}
-        {status && (
-          <dl className="facts">
-            <dt>State</dt>
-            <dd>{status.state}</dd>
-            <dt>Session</dt>
-            <dd>{status.session_id ?? "–"}</dd>
-            <dt>Market time</dt>
-            <dd>
-              {fmtTime(status.sim_time)} (session {fmtTime(status.session_open)}–{fmtTime(status.session_close)})
-            </dd>
-            <dt>Events published</dt>
-            <dd>{fmtNumber(status.events_published ?? 0)}</dd>
-            <dt>Labelled episodes</dt>
-            <dd>{fmtNumber(status.labels_published ?? 0)}</dd>
-            <dt>Pace</dt>
-            <dd>
-              {status.pace} {status.pace === "realtime" && `×${status.speed}`}
-            </dd>
-          </dl>
-        )}
-        <div className="actions">
-          <button type="button" onClick={() => void act("Sessions started.", client.simStart)}>
-            Start
-          </button>
-          <button type="button" onClick={() => void act("Session stopped.", client.simStop)}>
-            Stop
-          </button>
-        </div>
-      </section>
+          {recordings?.length === 0 && (
+            <p className="muted">No complete recordings yet: marketsim finishes one at the end of each session.</p>
+          )}
+          {recordings && recordings.length > 0 && (
+            <div className="field">
+              <label htmlFor="replay-recording">Recording</label>
+              <select id="replay-recording" value={recording} onChange={(e) => setRecording(e.target.value)}>
+                {recordings.map((r) => (
+                  <option key={r.name} value={r.name}>
+                    {r.name} ({fmtBytes(r.size_bytes)})
+                  </option>
+                ))}
+              </select>
+              <button type="button" disabled={replayRun?.status === "running"} onClick={() => void startReplay()}>
+                Replay
+              </button>
+            </div>
+          )}
+          {replayError && (
+            <p className="error" role="alert">
+              {replayError}
+            </p>
+          )}
+          {replayRun && <RunFigures run={replayRun} />}
+        </section>
+      </div>
 
       <section aria-labelledby="inject-title">
         <h2 id="inject-title">Inject an episode now</h2>

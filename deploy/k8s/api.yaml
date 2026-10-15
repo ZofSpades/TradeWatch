@@ -72,6 +72,9 @@ spec:
               value: ":8080"
             - name: TW_API_SIM_URL
               value: http://marketsim:8090
+            # Replays need marketsim's recordings: see README.md.
+            - name: TW_API_RULES_DIR
+              value: /etc/tradewatch/rules
             - name: TW_API_JWT_SECRET
               valueFrom:
                 secretKeyRef:

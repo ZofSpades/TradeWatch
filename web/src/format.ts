@@ -89,3 +89,28 @@ export function fmtDuration(s: number | null | undefined): string {
   if (s < 1) return `${Math.round(s * 1000)} ms`;
   return `${s.toFixed(s < 10 ? 2 : 1)} s`;
 }
+
+/** A proportion such as recall, to two decimals, or "–" when undefined. */
+export function fmtRatio(v: number | null | undefined): string {
+  return v === null || v === undefined ? "–" : v.toFixed(2);
+}
+
+/** A file size, such as "3.4 MB". */
+export function fmtBytes(n: number): string {
+  if (n < 1024) return `${n} B`;
+  const units = ["KB", "MB", "GB"];
+  let v = n / 1024;
+  let i = 0;
+  while (v >= 1024 && i < units.length - 1) {
+    v /= 1024;
+    i++;
+  }
+  return `${v.toFixed(v < 10 ? 1 : 0)} ${units[i]}`;
+}
+
+/** A time to detect, in simulated seconds: "0 s", "400 ms" or "46 s". */
+export function fmtTTD(s: number | null | undefined): string {
+  if (s === null || s === undefined) return "–";
+  if (s > 0 && s < 1) return `${Math.round(s * 1000)} ms`;
+  return `${Math.round(s)} s`;
+}

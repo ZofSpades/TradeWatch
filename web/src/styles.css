@@ -1022,3 +1022,15 @@ td code,
     grid-column: auto;
   }
 }
+
+.column {
+  display: grid;
+  gap: 24px;
+  align-content: start;
+  min-width: 0;
+}
+
+.run-figures {
+  margin-top: 12px;
+  overflow-x: auto;
+}

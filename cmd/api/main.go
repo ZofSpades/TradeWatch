@@ -80,6 +80,11 @@ func run(log *slog.Logger) error {
 	admin := metrics.NewServer(cfg.HTTPAddr, reg, log)
 	admin.SetReady(true)
 	g, gctx := errgroup.WithContext(ctx)
+	if cfg.RecordingsDir != "" {
+		if err := srv.SetReplays(gctx, cfg.RecordingsDir, cfg.RulesDir); err != nil {
+			return fmt.Errorf("TW_API_RECORDINGS_DIR: %w", err)
+		}
+	}
 	g.Go(func() error { return admin.Run(gctx) })
 	g.Go(func() error {
 		defer stop()

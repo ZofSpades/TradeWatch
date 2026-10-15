@@ -3,8 +3,10 @@ import type {
   AlertPage,
   AlertSummary,
   AuditEntry,
+  EvaluationRun,
   LiveView,
   LoginResponse,
+  Recording,
   RuleHistory,
   RuleSet,
   SimInjection,
@@ -104,5 +106,9 @@ export function makeClient(getToken: () => string | null, onUnauthorized: () => 
         "/api/v1/sim/scenarios",
         symbol ? { scenario, symbol } : { scenario },
       ),
+    evaluations: (limit = 20) => request<{ runs: EvaluationRun[] }>("GET", `/api/v1/evaluations?limit=${limit}`),
+    evaluation: (id: number) => request<EvaluationRun>("GET", `/api/v1/evaluations/${id}`),
+    recordings: () => request<{ recordings: Recording[] }>("GET", "/api/v1/recordings"),
+    replay: (recording: string) => request<EvaluationRun>("POST", "/api/v1/replays", { recording }),
   };
 }

@@ -25,6 +25,9 @@ export type LoginResponse = S["LoginResponse"];
 export type Role = S["Role"];
 export type SystemStatus = S["SystemStatus"];
 export type Quantiles = S["Quantiles"];
+export type EvaluationRun = S["EvaluationRun"];
+export type TypeFigures = S["TypeFigures"];
+export type Recording = S["Recording"];
 
 export const ABUSE_TYPES: AbuseType[] = [
   "wash_trading",

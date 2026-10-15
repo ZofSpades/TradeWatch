@@ -21,6 +21,7 @@ runs apply each migration exactly once (`TestMigrateAppliesOnceUnderConcurrency`
 | `rule_versions` | Every rule version a detector loaded, identified by rule ID and source digest, with the YAML source |
 | `rule_sets`, `rule_set_members` | Which rule versions made up each loaded rule set |
 | `rule_set_loads` | Every load of a rule set by a detector instance, and when |
+| `evaluation_runs` | One row per evaluation: a `make eval` run or a replay, with its status, source, rules digest and the figures of each abuse type as JSON |
 
 Event times are stored as the protobuf's nanosecond integers. Bookkeeping
 times are `timestamptz`. Alerts are indexed for the API's listing: by
@@ -30,6 +31,17 @@ account array). Paging is by keyset, on (detection time, key).
 `rule_versions` makes one governance check possible. If a rule's source
 changes without its version number changing, two digests share a rule ID
 and version, and the API reports `version_reused: true` for them.
+
+## Evaluation runs
+
+`make eval` records each run in `evaluation_runs`, and the API records each
+replay an admin starts ([api.md](api.md#replays-and-evaluation-runs)). A run
+starts as `running` and ends `done`, with a one-line summary and the
+production rules' figures per abuse type, or `failed`, with the error. The
+figures are `eval.TypeSummary` values: episodes, detected episodes, alerts,
+matching alerts, recall, precision, F1 and the median time to detect, null
+where a rate is undefined. Finishing a run that is not running fails, so an
+outcome is never overwritten.
 
 ## Redis views
 

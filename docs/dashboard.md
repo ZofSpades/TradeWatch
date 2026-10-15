@@ -50,7 +50,9 @@ Selecting an alert opens its detail beside the queue:
 **Rules.** The rule set most recently loaded by a detector, with each rule's
 version. A rule whose content changed without a version bump is flagged.
 Selecting a rule shows every version a detector has loaded, with its YAML
-source.
+source. Below the rules, the evaluation runs (`make eval` runs and replays)
+are listed newest first; selecting one shows its recall, precision, F1 and
+median time to detect for each abuse type.
 
 ![Rules, and one rule's versions](images/dashboard-rules.png)
 
@@ -73,8 +75,10 @@ trace search in Jaeger ([observability.md](observability.md)).
 
 **Simulator** (admins only). The session's state and market time. From here
 an admin can inject a labelled abuse episode now (optionally on a chosen
-symbol) and change the background injection rates. Everything on this page
-is simulated.
+symbol) and change the background injection rates. An admin can also replay
+a complete recording through the detectors with the current rules; the page
+follows the replay and shows its figures when it is done. Everything on this
+page is simulated.
 
 ![The Simulator page](images/dashboard-simulator.png)
 
