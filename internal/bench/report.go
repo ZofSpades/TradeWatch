@@ -98,17 +98,18 @@ func Markdown(r *Result) string {
 	case !ok:
 		p("The pipeline fell behind at the first rate offered, %s events per second.\n\n", thousands(r.Steps[0].TargetRate))
 	default:
-		p("**Sustained throughput: %s events per second**, measured at the %s step: the highest rate at which the detectors processed at least 98%% of what marketsim published and neither ingest nor the detectors ended the window more than one second of traffic behind. ",
-			thousands(best.Processed), rateLabel(best.TargetRate))
+		p("**Sustained throughput: %s events per second**, published by marketsim and kept up with at the %s step. That is the highest rate at which the detectors processed at least 98%% of what was published, and neither ingest nor the detectors ended the window more than one second of traffic behind. ",
+			thousands(best.Published), rateLabel(best.TargetRate))
 		if best.EndToEnd.N > 0 {
-			p("At that rate, an alert was stored %s after the event that triggered it at the median and %s at the 99th percentile (%d alerts).",
-				duration(best.EndToEnd.P50), duration(best.EndToEnd.P99), best.EndToEnd.N)
+			p("At that rate, an alert was stored %s after the event that triggered it at the median and %s at the 99th percentile (%s alerts).",
+				duration(best.EndToEnd.P50), duration(best.EndToEnd.P99), thousands(float64(best.EndToEnd.N)))
 		}
 		p("\n\n")
 		switch {
 		case !last.KeptUp:
-			p("At %s events per second the pipeline fell behind: the detectors processed %s events per second of the %s published, and their lag ended at %s records.\n\n",
-				thousands(last.TargetRate), thousands(last.Processed), thousands(last.Published), thousands(last.Lag["detector"].End))
+			p("At %s events per second the pipeline fell behind. Of %s events per second published, ingest released %s and the detectors processed %s; at the end of the window ingest was %s records behind and the detectors %s.\n\n",
+				thousands(last.TargetRate), thousands(last.Published), thousands(last.Released), thousands(last.Processed),
+				thousands(last.Lag["ingest"].End), thousands(last.Lag["detector"].End))
 		case last.SourceLimited:
 			p("At the %s step marketsim could offer only %s events per second, and the pipeline kept up, so its own limit is higher than measured here.\n\n",
 				rateLabel(last.TargetRate), thousands(last.Published))
@@ -132,7 +133,7 @@ func Markdown(r *Result) string {
 	p("| ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |\n")
 	for _, s := range r.Steps {
 		e, d := s.EndToEnd, s.EventToDetector
-		p("| %s | %d | %s | %s | %s | %s | %s | %s | %s |\n", thousands(s.TargetRate), s.Alerts,
+		p("| %s | %s | %s | %s | %s | %s | %s | %s | %s |\n", thousands(s.TargetRate), thousands(float64(s.Alerts)),
 			duration(e.P50), duration(e.P95), duration(e.P99), duration(e.Max), duration(d.P50), duration(d.P95), duration(d.P99))
 	}
 

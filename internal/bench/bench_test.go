@@ -181,9 +181,9 @@ func TestReportStatesTheSustainedRate(t *testing.T) {
 
 	md := Markdown(r)
 	for _, want := range []string{
-		"**Sustained throughput: 19,980 events per second**, measured at the 20k step",
+		"**Sustained throughput: 19,990 events per second**, published by marketsim and kept up with at the 20k step",
 		"stored 31.0 ms after the event that triggered it at the median and 120 ms at the 99th percentile (120 alerts)",
-		"At 40,000 events per second the pipeline fell behind: the detectors processed 30,000 events per second of the 39,900 published",
+		"At 40,000 events per second the pipeline fell behind. Of 39,900 events per second published, ingest released 0 and the detectors processed 30,000; at the end of the window ingest was 1,000 records behind and the detectors 400,000.",
 		"| 20,000 | 19,990 | 19,985 | 19,980 | 800 / 800 | 3,000 / 3,000 | sustained |",
 		"| 40,000 | 0 | – | – | – | – | – | – | – |",
 		"commit `abc1234`",

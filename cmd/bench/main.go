@@ -5,15 +5,20 @@
 // compose stack, with marketsim configured by deploy/compose/bench.yml.
 //
 //	bench [-rates 1000,2000,...] [-warmup 20s] [-measure 60s] [-out dir]
+//	bench -render docs/results/bench/results.json
+//
+// -render rebuilds a report from a run's saved results, without running.
 package main
 
 import (
 	"context"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"log/slog"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"syscall"
@@ -39,7 +44,20 @@ func run() error {
 	postgres := flag.String("postgres", os.Getenv("TW_IT_POSTGRES_URL"), "Postgres URL of the alert store")
 	docker := flag.String("docker", "", "Docker's version, as the host reports it")
 	commit := flag.String("commit", "", "the commit under test")
+	render := flag.String("render", "", "re-render the report from this results.json instead of running, writing it next to the file")
 	flag.Parse()
+
+	if *render != "" {
+		b, err := os.ReadFile(*render)
+		if err != nil {
+			return err
+		}
+		var res bench.Result
+		if err := json.Unmarshal(b, &res); err != nil {
+			return fmt.Errorf("%s: %w", *render, err)
+		}
+		return bench.Write(filepath.Dir(*render), &res)
+	}
 
 	var rs []float64
 	for _, f := range strings.Split(*rates, ",") {

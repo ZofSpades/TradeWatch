@@ -108,13 +108,13 @@ type Result struct {
 	Steps       []Step      `json:"steps"`
 }
 
-// Sustained returns the step with the highest processing rate at which the
+// Sustained returns the step with the highest published rate at which the
 // pipeline kept up, and whether there is one.
 func (r *Result) Sustained() (Step, bool) {
 	var best Step
 	found := false
 	for _, s := range r.Steps {
-		if s.KeptUp && (!found || s.Processed > best.Processed) {
+		if s.KeptUp && (!found || s.Published > best.Published) {
 			best, found = s, true
 		}
 	}
