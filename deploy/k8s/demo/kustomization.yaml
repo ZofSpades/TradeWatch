@@ -1,0 +1,16 @@
+# make demo's scenarios as a Job, against the stack deployed from
+# deploy/k8s:
+#
+#   kubectl apply -k deploy/k8s/demo
+#   kubectl -n tradewatch logs -f job/demo
+#
+# Delete the Job to run it again.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: tradewatch
+labels:
+  - pairs:
+      app.kubernetes.io/part-of: tradewatch
+    includeTemplates: true
+resources:
+  - job.yaml

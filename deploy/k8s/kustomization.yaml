@@ -1,0 +1,22 @@
+# TradeWatch on Kubernetes: the services of the compose stack, and the
+# single-node Kafka, Postgres and Redis they need, in the tradewatch
+# namespace. Monitoring is left to the cluster's own Prometheus. See
+# README.md.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: tradewatch
+labels:
+  - pairs:
+      app.kubernetes.io/part-of: tradewatch
+    includeTemplates: true
+resources:
+  - namespace.yaml
+  - kafka.yaml
+  - postgres.yaml
+  - redis.yaml
+  - marketsim.yaml
+  - ingest.yaml
+  - detector.yaml
+  - alertsink.yaml
+  - api.yaml
+  - web.yaml

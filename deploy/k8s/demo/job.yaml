@@ -1,0 +1,38 @@
+# Injects labelled scenarios through the dashboard's proxy and reports the
+# alert each one raised (cmd/demo). Its dashboard links assume
+# `kubectl -n tradewatch port-forward svc/web 3000:8080`.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: demo
+spec:
+  backoffLimit: 0
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: demo
+    spec:
+      restartPolicy: Never
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        runAsGroup: 65532
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: demo
+          image: tradewatch/backend:local
+          command: ["demo", "-api", "http://web:8080", "-dashboard", "http://localhost:3000"]
+          env:
+            - name: TW_KAFKA_BROKERS
+              value: kafka:9092
+            - name: TW_API_ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: tradewatch
+                  key: TW_API_ADMIN_PASSWORD
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]

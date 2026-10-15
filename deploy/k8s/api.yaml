@@ -1,0 +1,117 @@
+# REST and server-sent events with JWT authentication. It keeps no state
+# of its own: alerts are in Postgres and live events come over Redis
+# pub/sub. The System page reads Prometheus: set TW_API_PROMETHEUS_URL to
+# the cluster's Prometheus, and TW_API_GRAFANA_URL and TW_API_TRACES_URL
+# for its links.
+apiVersion: v1
+kind: Service
+metadata:
+  name: api
+spec:
+  selector:
+    app.kubernetes.io/name: api
+  ports:
+    - name: http
+      port: 8080
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: api
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: api
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8094"
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        runAsGroup: 65532
+        seccompProfile:
+          type: RuntimeDefault
+      initContainers:
+        - name: migrate
+          image: tradewatch/backend:local
+          command: ["alertsink", "migrate"]
+          env:
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: tradewatch
+                  key: POSTGRES_PASSWORD
+            - name: TW_POSTGRES_URL
+              value: postgres://tradewatch:$(POSTGRES_PASSWORD)@postgres:5432/tradewatch?sslmode=disable
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+      containers:
+        - name: api
+          image: tradewatch/backend:local
+          command: ["api"]
+          env:
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: tradewatch
+                  key: POSTGRES_PASSWORD
+            - name: TW_POSTGRES_URL
+              value: postgres://tradewatch:$(POSTGRES_PASSWORD)@postgres:5432/tradewatch?sslmode=disable
+            - name: TW_REDIS_ADDR
+              value: redis:6379
+            - name: TW_API_ADDR
+              value: ":8080"
+            - name: TW_API_SIM_URL
+              value: http://marketsim:8090
+            - name: TW_API_JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: tradewatch
+                  key: TW_API_JWT_SECRET
+            - name: TW_API_ANALYST_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: tradewatch
+                  key: TW_API_ANALYST_PASSWORD
+            - name: TW_API_ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: tradewatch
+                  key: TW_API_ADMIN_PASSWORD
+            - name: TW_HTTP_ADDR
+              value: ":8094"
+          ports:
+            - name: http
+              containerPort: 8080
+            - name: admin
+              containerPort: 8094
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: admin
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: admin
+            periodSeconds: 20
+          resources:
+            requests:
+              cpu: 100m
+              memory: 64Mi
+            limits:
+              memory: 512Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]

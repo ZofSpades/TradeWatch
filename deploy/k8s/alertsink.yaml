@@ -1,0 +1,86 @@
+# Stores alerts and rule sets in Postgres and keeps the Redis live views.
+# The init container applies the database migrations first; goose holds a
+# Postgres advisory lock, so it is safe when the api runs them at the same
+# time.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: alertsink
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: alertsink
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: alertsink
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8093"
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        runAsGroup: 65532
+        seccompProfile:
+          type: RuntimeDefault
+      initContainers:
+        - name: migrate
+          image: tradewatch/backend:local
+          command: ["alertsink", "migrate"]
+          env:
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: tradewatch
+                  key: POSTGRES_PASSWORD
+            - name: TW_POSTGRES_URL
+              value: postgres://tradewatch:$(POSTGRES_PASSWORD)@postgres:5432/tradewatch?sslmode=disable
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+      containers:
+        - name: alertsink
+          image: tradewatch/backend:local
+          command: ["alertsink"]
+          env:
+            - name: TW_KAFKA_BROKERS
+              value: kafka:9092
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: tradewatch
+                  key: POSTGRES_PASSWORD
+            - name: TW_POSTGRES_URL
+              value: postgres://tradewatch:$(POSTGRES_PASSWORD)@postgres:5432/tradewatch?sslmode=disable
+            - name: TW_REDIS_ADDR
+              value: redis:6379
+            - name: TW_HTTP_ADDR
+              value: ":8093"
+          ports:
+            - name: admin
+              containerPort: 8093
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: admin
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: admin
+            periodSeconds: 20
+          resources:
+            requests:
+              cpu: 100m
+              memory: 64Mi
+            limits:
+              memory: 512Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]

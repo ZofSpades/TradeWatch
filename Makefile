@@ -15,6 +15,9 @@ INFRA := kafka postgres redis
 BUF_VERSION := v1.73.0
 PROTOC_GEN_GO_VERSION := v1.36.12
 STATICCHECK_VERSION := v0.8.2
+KUSTOMIZE_IMAGE := registry.k8s.io/kustomize/kustomize:v5.7.1
+KUBECONFORM_IMAGE := ghcr.io/yannh/kubeconform:v0.7.0
+K8S_VERSION := 1.33.0
 
 ##@ Stack
 
@@ -94,10 +97,11 @@ test-unit: ## Run unit tests with the local Go toolchain
 	go test ./...
 
 .PHONY: lint
-lint: env ## Run gofmt, go mod tidy, go vet and staticcheck, and check the monitoring configuration (in Docker)
+lint: env ## Run gofmt, go mod tidy, go vet and staticcheck, and check the monitoring and Kubernetes configuration (in Docker)
 	$(TOOLBOX) sh -c 'test -z "$$(gofmt -l .)" || { gofmt -l .; exit 1; }; go mod tidy -diff && \
 		go vet ./... && go vet -tags=integration ./... && go run honnef.co/go/tools/cmd/staticcheck@$(STATICCHECK_VERSION) ./...'
 	$(MAKE) lint-monitoring
+	$(MAKE) lint-k8s
 
 PROMTOOL := $(COMPOSE) run --rm --no-deps --entrypoint promtool prometheus
 
@@ -105,6 +109,19 @@ PROMTOOL := $(COMPOSE) run --rm --no-deps --entrypoint promtool prometheus
 lint-monitoring: env ## Check the Prometheus configuration and unit-test the alerting rules (in Docker)
 	$(PROMTOOL) check config /etc/prometheus/prometheus.yml
 	$(PROMTOOL) test rules /etc/prometheus/tests/tradewatch_test.yml
+
+.PHONY: lint-k8s
+lint-k8s: ## Render deploy/k8s with kustomize and validate it against the Kubernetes API schemas (in Docker)
+	for dir in deploy/k8s deploy/k8s/demo; do \
+		echo "$$dir"; \
+		docker run --rm -v "$$PWD/$$dir:/k8s:ro" $(KUSTOMIZE_IMAGE) build /k8s | \
+			docker run --rm -i $(KUBECONFORM_IMAGE) -strict -summary -kubernetes-version $(K8S_VERSION) -; \
+	done
+
+.PHONY: k8s-smoke
+k8s-smoke: env ## Deploy deploy/k8s to a throwaway k3s cluster in Docker and run the demo Job there (about 15 minutes)
+	$(COMPOSE) build marketsim web
+	bash scripts/k8s-smoke.sh
 
 .PHONY: validate-rules
 validate-rules: env ## Check the detection rules in rules/ the way the detector loads them

@@ -69,6 +69,17 @@ jobs:
       - name: promtool check config and test rules
         run: make lint-monitoring
 
+  kubernetes:
+    name: Kubernetes manifests (k3s)
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v7
+      - name: Validate against the Kubernetes API schemas
+        run: make lint-k8s
+      - name: Deploy to k3s and run the demo Job
+        run: make k8s-smoke
+
   integration:
     name: Integration tests (docker compose)
     runs-on: ubuntu-latest
