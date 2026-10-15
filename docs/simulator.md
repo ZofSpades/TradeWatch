@@ -155,7 +155,7 @@ The admin server (`TW_HTTP_ADDR`, default `:8090`) serves `/metrics`,
 | `POST /api/v1/sim/scenarios` | `{"scenario": "spoofing.layering", "symbol": "QZAP"}` starts a labelled scenario now. Returns 409 if no session is running |
 
 In compose, this port is reachable only on the internal network. The
-dashboard reaches it through the authenticated API (Phase 7).
+dashboard reaches it through the authenticated API, as an admin.
 
 ## Configuration
 

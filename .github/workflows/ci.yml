@@ -91,7 +91,7 @@ jobs:
         if: failure()
         run: docker compose logs --no-color --tail=200
 
-  # The definition of done, on a machine with nothing but Docker and make:
+  # On a machine with nothing but Docker and make:
   # the stack builds and starts, the labelled scenarios raise their alerts,
   # and the dashboard works in a real browser.
   demo:
