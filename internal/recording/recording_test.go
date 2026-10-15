@@ -6,6 +6,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"io"
+	"os"
 	"path/filepath"
 	"testing"
 
@@ -191,4 +192,30 @@ func FuzzReader(f *testing.F) {
 			}
 		}
 	})
+}
+
+func TestCreateGivesTheFinalNameOnlyWhenComplete(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "s.twrec.gz")
+	w, err := Create(path, &twpb.RecordingHeader{SessionId: "S"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	writeAll(t, w, sampleEntries())
+	if _, err := os.Stat(path); !errors.Is(err, os.ErrNotExist) {
+		t.Errorf("the final name exists while writing: %v", err)
+	}
+	if _, err := os.Stat(path + Partial); err != nil {
+		t.Errorf("no partial file while writing: %v", err)
+	}
+	if err := w.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(path + Partial); !errors.Is(err, os.ErrNotExist) {
+		t.Errorf("the partial file is left after Close: %v", err)
+	}
+	r, err := Open(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	r.Close()
 }

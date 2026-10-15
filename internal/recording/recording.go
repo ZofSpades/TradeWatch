@@ -39,20 +39,28 @@ type Writer struct {
 	bw    *bufio.Writer
 	buf   []byte
 	err   error
+	// path is the file recording's final name, which Close gives it.
+	path string
 }
 
-// Create creates the recording file at path and writes its header.
+// Partial is the suffix of a recording file while it is being written:
+// Create writes to path+Partial, and Close renames the file to path. A file
+// with the final name is therefore always complete.
+const Partial = ".part"
+
+// Create starts the recording file at path and writes its header.
 func Create(path string, header *twpb.RecordingHeader) (*Writer, error) {
-	f, err := os.Create(path)
+	f, err := os.Create(path + Partial)
 	if err != nil {
 		return nil, err
 	}
 	w, err := NewWriter(f, header)
 	if err != nil {
 		f.Close()
+		os.Remove(path + Partial)
 		return nil, err
 	}
-	w.close = f
+	w.close, w.path = f, path
 	return w, nil
 }
 
@@ -135,6 +143,9 @@ func (w *Writer) Close() error {
 		if e := w.close.Close(); err == nil {
 			err = e
 		}
+	}
+	if w.path != "" && err == nil {
+		err = os.Rename(w.path+Partial, w.path)
 	}
 	return err
 }
