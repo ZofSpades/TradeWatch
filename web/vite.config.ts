@@ -13,5 +13,8 @@ export default defineConfig({
     environment: "jsdom",
     globals: true,
     setupFiles: ["src/test/setup.ts"],
+    // A file's first test renders cold, which takes seconds on a busy
+    // machine. A hung test still fails.
+    testTimeout: 20_000,
   },
 });
