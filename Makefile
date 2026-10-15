@@ -94,8 +94,9 @@ test-unit: ## Run unit tests with the local Go toolchain
 	go test ./...
 
 .PHONY: lint
-lint: env ## Run gofmt, go vet and staticcheck, and check the monitoring configuration (in Docker)
-	$(TOOLBOX) sh -c 'test -z "$$(gofmt -l .)" || { gofmt -l .; exit 1; }; go vet ./... && go vet -tags=integration ./... && go run honnef.co/go/tools/cmd/staticcheck@$(STATICCHECK_VERSION) ./...'
+lint: env ## Run gofmt, go mod tidy, go vet and staticcheck, and check the monitoring configuration (in Docker)
+	$(TOOLBOX) sh -c 'test -z "$$(gofmt -l .)" || { gofmt -l .; exit 1; }; go mod tidy -diff && \
+		go vet ./... && go vet -tags=integration ./... && go run honnef.co/go/tools/cmd/staticcheck@$(STATICCHECK_VERSION) ./...'
 	$(MAKE) lint-monitoring
 
 PROMTOOL := $(COMPOSE) run --rm --no-deps --entrypoint promtool prometheus
