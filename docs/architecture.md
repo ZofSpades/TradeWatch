@@ -83,6 +83,10 @@ Each admin server exposes `/metrics`, `/healthz`, `/readyz` and the Go
 profiler under `/debug/pprof/`. Admin ports stay on the internal network:
 compose does not publish them.
 
+The same services run on Kubernetes from
+[deploy/k8s](../deploy/k8s/README.md), with single-node Kafka, Postgres and
+Redis and without the monitoring stack.
+
 ## Topics
 
 All symbol-keyed topics share one partition count (`TW_KAFKA_PARTITIONS`,
