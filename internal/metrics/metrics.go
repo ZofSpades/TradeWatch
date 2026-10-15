@@ -85,9 +85,6 @@ func NewServer(addr string, reg *prometheus.Registry, log *slog.Logger) *Server 
 	return s
 }
 
-// Handle registers an additional route.
-func (s *Server) Handle(pattern string, h http.Handler) { s.mux.Handle(pattern, h) }
-
 // HandleFunc registers an additional route.
 func (s *Server) HandleFunc(pattern string, h http.HandlerFunc) { s.mux.HandleFunc(pattern, h) }
 

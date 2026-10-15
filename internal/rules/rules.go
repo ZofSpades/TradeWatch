@@ -189,9 +189,6 @@ var compiledSchema = func() *jsonschema.Schema {
 	return s
 }()
 
-// Schema returns the embedded JSON Schema rules are validated against.
-func Schema() []byte { return append([]byte(nil), schemaJSON...) }
-
 // validateSchema checks a YAML document against the JSON Schema. YAML is
 // converted to JSON first so that the schema sees exactly the JSON data
 // model.

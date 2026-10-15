@@ -81,9 +81,6 @@ func NewRunner(cfg Config, cl *kgo.Client, reg prometheus.Registerer, log *slog.
 	return r
 }
 
-// Universe returns the universe sessions run over.
-func (r *Runner) Universe() *sim.Universe { return r.uni }
-
 // SessionConfig returns the simulator configuration the runner uses for
 // session n (0-based) when it starts at wallNow.
 func (r *Runner) SessionConfig(n int, wallNow time.Time) sim.Config {

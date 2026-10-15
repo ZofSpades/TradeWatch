@@ -3,7 +3,6 @@ package detect
 import (
 	"fmt"
 	"io"
-	"slices"
 	"time"
 
 	"github.com/ZofSpades/tradewatch/internal/rules"
@@ -52,16 +51,6 @@ func Register(k Kind) {
 		panic("detect: duplicate detector " + k.Name)
 	}
 	registry[k.Name] = k
-}
-
-// Kinds lists the registered detector names.
-func Kinds() []string {
-	names := make([]string, 0, len(registry))
-	for n := range registry {
-		names = append(names, n)
-	}
-	slices.Sort(names)
-	return names
 }
 
 // boundRule is an enabled rule with its decoded parameters.

@@ -86,6 +86,3 @@ func Open(ctx context.Context, url string) (*Store, error) {
 
 // Close releases every connection.
 func (s *Store) Close() { s.pool.Close() }
-
-// Ping checks the connection.
-func (s *Store) Ping(ctx context.Context) error { return s.pool.Ping(ctx) }
