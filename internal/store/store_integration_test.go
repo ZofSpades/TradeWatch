@@ -68,8 +68,8 @@ func TestMigrateAppliesOnceUnderConcurrency(t *testing.T) {
 		})
 	}
 	wg.Wait()
-	if !slices.Equal(applied, []int64{1}) {
-		t.Fatalf("applied %v across three concurrent runs, want [1] once", applied)
+	if !slices.Equal(applied, []int64{1, 2}) {
+		t.Fatalf("applied %v across three concurrent runs, want each migration once", applied)
 	}
 	if v, err := Migrate(ctx, url, quiet); err != nil || len(v) != 0 {
 		t.Fatalf("second migration applied %v, err %v", v, err)
@@ -353,5 +353,59 @@ func TestRuleSetsAreRecordedIdempotently(t *testing.T) {
 	}
 	if _, err := s.RuleHistory(ctx, "TW-NOPE"); !errors.Is(err, ErrNotFound) {
 		t.Errorf("unknown rule: %v", err)
+	}
+}
+
+func TestEvaluationRunsAreStartedFinishedAndListed(t *testing.T) {
+	s := open(t)
+	ctx := context.Background()
+	first, err := s.StartEvaluation(ctx, EvalKindEval, "25 sessions", "make eval", "d1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if first.Status != EvalRunning || first.FinishedAt != nil || string(first.Types) != "[]" {
+		t.Errorf("new run %+v", first)
+	}
+	second, err := s.StartEvaluation(ctx, EvalKindReplay, "live-1.twrec.gz", "admin", "d2")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	types := []map[string]any{{"abuse_type": "spoofing", "recall": 0.8}}
+	if err := s.FinishEvaluation(ctx, first.ID, "1,123 episodes", types, nil); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.FinishEvaluation(ctx, first.ID, "again", types, nil); !errors.Is(err, ErrNotFound) {
+		t.Errorf("finishing a finished run: %v", err)
+	}
+	got, err := s.Evaluation(ctx, first.ID)
+	if err != nil || got.Status != EvalDone || got.Summary != "1,123 episodes" || got.FinishedAt == nil ||
+		string(got.Types) != `[{"recall": 0.8, "abuse_type": "spoofing"}]` {
+		t.Errorf("finished run %+v (types %s), err %v", got, got.Types, err)
+	}
+
+	runs, err := s.Evaluations(ctx, 10)
+	if err != nil || len(runs) != 2 || runs[0].ID != second.ID || runs[1].ID != first.ID {
+		t.Fatalf("runs %v, err %v; want the replay, then the eval", runs, err)
+	}
+	if n, err := s.AbandonEvaluations(ctx, EvalKindReplay, "the API stopped"); err != nil || n != 1 {
+		t.Errorf("abandoned %d, err %v", n, err)
+	}
+	if got, _ := s.Evaluation(ctx, second.ID); got.Status != EvalFailed || got.Error != "the API stopped" {
+		t.Errorf("abandoned run %+v", got)
+	}
+
+	third, err := s.StartEvaluation(ctx, EvalKindReplay, "live-2.twrec.gz", "admin", "d2")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := s.FinishEvaluation(ctx, third.ID, "", []int{}, errors.New("recording is truncated")); err != nil {
+		t.Fatal(err)
+	}
+	if got, _ := s.Evaluation(ctx, third.ID); got.Status != EvalFailed || got.Error != "recording is truncated" {
+		t.Errorf("failed run %+v", got)
+	}
+	if _, err := s.Evaluation(ctx, 1<<40); !errors.Is(err, ErrNotFound) {
+		t.Errorf("unknown run: %v", err)
 	}
 }

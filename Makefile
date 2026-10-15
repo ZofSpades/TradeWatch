@@ -117,8 +117,8 @@ validate-rules: env ## Check the detection rules in rules/ the way the detector 
 	$(TOOLBOX) go run ./cmd/detector validate-rules rules
 
 .PHONY: eval
-eval: env ## Measure detection quality on simulated sessions and write docs/results/eval
-	$(TOOLBOX) go run ./cmd/evaluator
+eval: infra ## Measure detection quality on simulated sessions, write docs/results/eval and record the run in Postgres
+	$(TOOLBOX) sh -c 'go run ./cmd/evaluator -postgres "$$TW_IT_POSTGRES_URL"'
 
 # marketsim records every session into this compose volume.
 RECORDINGS := tradewatch_recordings
