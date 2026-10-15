@@ -130,6 +130,10 @@ profile: up ## CPU-profile every service at a fixed rate: PROFILE_RATE events/s 
 	status=0; $(TOOLBOX) bash scripts/profile.sh $(PROFILE_RATE) $(PROFILE_SECONDS) $(PROFILE_OUT) || status=$$?; \
 	$(COMPOSE) up -d --no-deps --force-recreate --wait marketsim; exit $$status
 
+.PHONY: chaos
+chaos: up ## Kill, restart and rescale consumers mid-stream; check no alert is lost or duplicated (about 8 minutes; changes data)
+	bash scripts/chaos.sh
+
 .PHONY: bench-micro
 bench-micro: env ## Run Go micro-benchmarks and save results to docs/results/microbench
 	$(TOOLBOX) bash scripts/bench-micro.sh orderbook ./internal/orderbook

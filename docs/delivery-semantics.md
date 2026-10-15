@@ -66,6 +66,45 @@ flowchart LR
 | Concurrent deliveries of one alert store one row and raise it once | `TestConcurrentDeliveriesOfOneAlertStoreOneRow` |
 | Concurrent status changes are serialized | `TestConcurrentTransitionsAreSerialized` |
 | A rebuild restores the views after a lost counter and a sink that died before updating Redis | `TestRaisedUpdatedAndRebuild` |
+| On the running stack, no alert is lost or duplicated when consumers are killed, restarted and rescaled mid-stream and old records are re-published | `make chaos` ([results/chaos](results/chaos/README.md)) |
+
+### The chaos test
+
+The integration tests stop services gracefully. `make chaos` breaks the
+whole compose stack mid-stream, while one recorded session (795,425
+events in the latest run) streams through it:
+
+- **Process kills:** it kills one detector with SIGKILL, then both
+  detectors at once, then ingest and the alert sink together.
+- **Graceful restarts and rebalances:** it restarts ingest and the sink
+  gracefully, and scales the detectors from two to three and back, forcing
+  rebalances.
+- **Duplicates:** it re-publishes exact copies of the last 5,000 records of
+  every partition of the raw feeds and `market_events`, and of every alert
+  of the session.
+
+When the session ends and every consumer group has committed up to the
+end of its input, it replays the session's recording offline. It then
+requires Postgres to hold exactly the alerts the replay produces, with the
+same content, each raised once.
+
+The latest run passed. The replay produced 477 alerts, and Postgres held
+those 477 and nothing else. The alerts topic carried 549 deliveries of
+them: the 70 re-published copies and two alerts a killed detector had
+produced but not committed. The alert key absorbed every one.
+
+**Recovery cost.** The run also shows what a crash costs. A detector that
+takes over a partition re-reads it from its checkpoint's low-water offset,
+the earliest event any open state still needs. A session that stops
+without closing keeps its state open until it has been idle for
+`TW_DETECTOR_IDLE_AFTER` (10 minutes).
+
+The run started right after a 100,000-events/s benchmark, whose abandoned
+session still held the low-water offset back. Each takeover therefore
+re-read millions of records, and the detectors dropped 35 million of
+them as already processed. Correctness did not depend on that, but
+recovery time did. Directly after a high-rate run, a crash costs a replay
+proportional to everything published since.
 
 ## Not covered
 

@@ -1,0 +1,25 @@
+# Compose override used by `make chaos`. marketsim runs one session at a
+# fixed rate, records it, and exits. Corruption is off, so every published
+# event reaches the detectors and the recording replays to exactly the
+# alerts the pipeline must store. Abuse is injected ten times as often as
+# in the demo, for plenty of alerts. Every other service runs exactly as
+# `make up` starts it.
+services:
+  marketsim:
+    restart: "no"
+    environment:
+      TW_SIM_PACE: rate
+      TW_SIM_RATE: "2000"
+      TW_SIM_SESSIONS: "1"
+      # About five minutes of wall time at 2,000 events per second: longer
+      # than the fault schedule in scripts/chaos.sh.
+      TW_SIM_SESSION_DURATION: 4h
+      TW_SIM_CLOSING_WINDOW: 10m
+      # A fresh session per run: alert keys depend on the session.
+      TW_SIM_SESSION_PREFIX: chaos-${TW_CHAOS_RUN:?run make chaos}
+      TW_SIM_MALFORMED_RATE: "0"
+      TW_SIM_INJECT_WASH_TRADING: "6"
+      TW_SIM_INJECT_SPOOFING: "6"
+      TW_SIM_INJECT_MOMENTUM_IGNITION: "4"
+      TW_SIM_INJECT_QUOTE_STUFFING: "6"
+      TW_SIM_INJECT_MARKING_THE_CLOSE: "0.5"
