@@ -18,9 +18,10 @@ try {
     await page.click("button[type=submit]");
     await page.waitForSelector(".live-dot.live", { timeout: 15_000 });
     await page.getByLabel("Status", { exact: true }).selectOption("");
-    await page.getByLabel("Type", { exact: true }).selectOption("spoofing");
     await page.waitForSelector("table[aria-label=Alerts] tbody tr");
-    await page.keyboard.press("j");
+    // The queue shows every type. The detail is the newest spoofing alert,
+    // whose layers stand out on the price chart.
+    await page.locator("table[aria-label=Alerts] tbody tr", { hasText: "Spoofing" }).first().click();
     await page.waitForSelector(".alert-detail .price-chart");
     await page.waitForTimeout(300);
     await page.screenshot({ path: `${out}/dashboard-alerts-${theme}.png` });

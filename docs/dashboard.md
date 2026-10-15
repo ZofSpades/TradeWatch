@@ -43,10 +43,14 @@ Selecting an alert opens its detail beside the queue:
   the workflow (open → triaged → escalated or dismissed), and escalating,
   dismissing and commenting ask for a note.
 
+![The alert queue and an alert's detail](images/dashboard-alerts-light.png)
+
 **Rules.** The rule set most recently loaded by a detector, with each rule's
 version. A rule whose content changed without a version bump is flagged.
 Selecting a rule shows every version a detector has loaded, with its YAML
 source.
+
+![Rules, and one rule's versions](images/dashboard-rules.png)
 
 **System.** The pipeline's health, refreshed every 10 seconds from
 `GET /api/v1/system`:
@@ -63,10 +67,14 @@ If Prometheus cannot be reached, the page says so and keeps the last
 figures it had. Links open the full pipeline dashboard in Grafana and the
 trace search in Jaeger ([observability.md](observability.md)).
 
+![The System page](images/dashboard-system.png)
+
 **Simulator** (admins only). The session's state and market time. From here
 an admin can inject a labelled abuse episode now (optionally on a chosen
 symbol) and change the background injection rates. Everything on this page
 is simulated.
+
+![The Simulator page](images/dashboard-simulator.png)
 
 ## Keyboard
 
@@ -147,3 +155,6 @@ cd web && npm ci && npm run dev
 
 The development server proxies `/api` to `localhost:8080`, so the
 dashboard runs against the compose stack with hot reloading.
+
+`make screenshots` captures the images on this page from the running stack,
+in a headless browser.
