@@ -90,22 +90,22 @@ requires Postgres to hold exactly the alerts the replay produces, with the
 same content, each raised once.
 
 The latest run passed. The replay produced 477 alerts, and Postgres held
-those 477 and nothing else. The alerts topic carried 549 deliveries of
-them: the 70 re-published copies and two alerts a killed detector had
-produced but not committed. The alert key absorbed every one.
+those 477 and nothing else. The alerts topic carried 569 deliveries of
+them: the originals and the 92 copies the test re-published. The sink
+absorbed 93 repeats by key, one more than the copies on the topic, which
+fits a record redelivered after the sink was killed between storing it and
+committing its offset.
 
-**Recovery cost.** The run also shows what a crash costs. A detector that
-takes over a partition re-reads it from its checkpoint's low-water offset,
-the earliest event any open state still needs. A session that stops
+**Recovery cost.** A detector that takes over a partition re-reads it from
+its checkpoint's low-water offset, the earliest event any open state still
+needs. In the latest run the takeovers made the detectors drop 155,050
+market events as already processed, and regenerate 553 alerts while
+rebuilding state, none of which was produced again. A session that stops
 without closing keeps its state open until it has been idle for
-`TW_DETECTOR_IDLE_AFTER` (10 minutes).
-
-The run started right after a 100,000-events/s benchmark, whose abandoned
-session still held the low-water offset back. Each takeover therefore
-re-read millions of records, and the detectors dropped 35 million of
-them as already processed. Correctness did not depend on that, but
-recovery time did. Directly after a high-rate run, a crash costs a replay
-proportional to everything published since.
+`TW_DETECTOR_IDLE_AFTER` (10 minutes), and holds the low-water offset back
+meanwhile. A crash directly after a high-rate run therefore re-reads
+everything published since: correctness does not depend on it, but
+recovery time does.
 
 ## Not covered
 

@@ -1,47 +1,47 @@
 {
-  "session": "chaos-20261014T170733Z-001",
-  "commit": "344ffd7",
-  "started": "2026-10-14T17:08:19Z",
-  "finished": "2026-10-14T17:14:22.482861425Z",
+  "session": "chaos-20261030T160213Z-001",
+  "commit": "a88b405",
+  "started": "2026-10-30T16:02:54Z",
+  "finished": "2026-10-30T16:08:57.652102582Z",
   "faults": [
     {
-      "at": "2026-10-14T17:08:19Z",
+      "at": "2026-10-30T16:02:54Z",
       "what": "SIGKILL detector-1 while events are streaming"
     },
     {
-      "at": "2026-10-14T17:08:39Z",
+      "at": "2026-10-30T16:03:14Z",
       "what": "detector-1 started again"
     },
     {
-      "at": "2026-10-14T17:09:03Z",
-      "what": "replayed duplicates: re-published copies of 80000 raw records, 20000 market_events records and all 70 alert records of the session"
+      "at": "2026-10-30T16:03:36Z",
+      "what": "replayed duplicates: re-published copies of 80000 raw records, 20000 market_events records and all 92 alert records of the session"
     },
     {
-      "at": "2026-10-14T17:09:13Z",
+      "at": "2026-10-30T16:03:46Z",
       "what": "graceful restart of ingest and the alert sink"
     },
     {
-      "at": "2026-10-14T17:09:34Z",
+      "at": "2026-10-30T16:04:07Z",
       "what": "SIGKILL ingest and the alert sink"
     },
     {
-      "at": "2026-10-14T17:09:44Z",
+      "at": "2026-10-30T16:04:18Z",
       "what": "ingest and the alert sink started again"
     },
     {
-      "at": "2026-10-14T17:10:05Z",
+      "at": "2026-10-30T16:04:38Z",
       "what": "SIGKILL both detectors at once"
     },
     {
-      "at": "2026-10-14T17:10:16Z",
+      "at": "2026-10-30T16:04:48Z",
       "what": "both detectors started again"
     },
     {
-      "at": "2026-10-14T17:10:36Z",
+      "at": "2026-10-30T16:05:09Z",
       "what": "detectors scaled from 2 to 3: partitions rebalance"
     },
     {
-      "at": "2026-10-14T17:10:57Z",
+      "at": "2026-10-30T16:05:29Z",
       "what": "detectors scaled back to 2: the third leaves gracefully"
     }
   ],
@@ -54,26 +54,26 @@
     "unexpected": [],
     "differing": []
   },
-  "alert_records": 549,
+  "alert_records": 569,
   "alert_keys": 477,
-  "deliveries": 549,
+  "deliveries": 569,
   "raised_twice": [],
   "recovery": [
     {
       "what": "raw records ingest dropped as duplicates",
-      "increase": 80518
+      "increase": 80211
     },
     {
       "what": "market events the detectors dropped as duplicates",
-      "increase": 35249707
+      "increase": 155050
     },
     {
       "what": "alerts regenerated while rebuilding state after a handover, and not produced again",
-      "increase": 890
+      "increase": 553
     },
     {
       "what": "alert deliveries the sink absorbed by key",
-      "increase": 72
+      "increase": 93
     }
   ],
   "passed": true
