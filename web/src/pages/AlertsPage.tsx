@@ -165,7 +165,7 @@ export function AlertsPage({ selected, onSelect }: Props) {
               value={filters.q}
               placeholder="e.g. ACC-0042"
               title="An account, beneficial owner, symbol, rule ID or session ID, or the start of an alert key"
-              size={14}
+              size={15}
               onChange={(e) => set({ q: e.target.value })}
               onKeyDown={(e) => e.key === "Escape" && (e.currentTarget as HTMLInputElement).blur()}
             />
