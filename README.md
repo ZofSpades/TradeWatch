@@ -108,9 +108,9 @@ in the simulator sends 100 messages a second.
 
 Throughput, from `make bench` on one laptop (AMD Ryzen 7 4800H, Docker
 Desktop on WSL2) running the whole stack and the load generator
-([report](docs/results/bench/README.md)): the pipeline sustained 80,001
-events per second. At that rate an alert reached Postgres 52.3 ms after
-the event that triggered it at the median, and 177 ms at p99. At 100,000
+([report](docs/results/bench/README.md)): the pipeline sustained 120,042
+events per second. At that rate an alert reached Postgres 46.4 ms after
+the event that triggered it at the median, and 193 ms at p99. At 150,000
 events per second ingest's single processing loop fell behind
 ([docs/performance.md](docs/performance.md)).
 

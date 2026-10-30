@@ -30,26 +30,36 @@ it measures:
 - the exact time from an event's publication to its alert's insert into
   Postgres.
 
-The [latest run](results/bench/README.md), at commit `344ffd7`:
+The [latest run](results/bench/README.md), at commit `e55dee4`:
 
 | Offered, events/s | p50, event to stored alert | p99 | Alerts measured | Verdict |
 | ---: | ---: | ---: | ---: | --- |
-| 10,000 | 33.2 ms | 44.9 ms | 354 | sustained |
-| 40,000 | 37.9 ms | 81.8 ms | 1,439 | sustained |
-| 60,000 | 41.5 ms | 81.6 ms | 2,201 | sustained |
-| 80,000 | 52.3 ms | 177 ms | 2,884 | sustained |
-| 100,000 | 3.84 s | 6.02 s | 3,491 | fell behind |
+| 10,000 | 32.2 ms | 41.7 ms | 353 | sustained |
+| 40,000 | 34.7 ms | 47.6 ms | 1,443 | sustained |
+| 60,000 | 36.6 ms | 51.9 ms | 2,198 | sustained |
+| 80,000 | 38.3 ms | 491 ms | 2,871 | sustained |
+| 100,000 | 40.5 ms | 75.9 ms | 3,531 | sustained |
+| 120,000 | 46.4 ms | 193 ms | 4,399 | sustained |
+| 150,000 | 418 ms | 10.91 s | 4,821 | fell behind |
 
-- **Sustained:** 80,000 events/s. The detectors processed what was
+- **Sustained:** 120,000 events/s. The detectors processed what was
   published, and no consumer group built up lag.
-- **At the limit:** 100,000 events/s. The run before the routing-header fix
-  ([bench-before](results/profiling/bench-before/README.md)) kept up there,
-  with a p99 of 1.41 s. The latest run fell behind: ingest ended the window
-  220,922 records behind.
+- **At the limit:** 150,000 events/s. Ingest released 134,709 of the
+  149,807 events/s published and ended the window 810,068 records behind.
+- **One slow step.** At 80,000 events/s the p99 was 491 ms, although the
+  step kept up and the next one had a p99 of 75.9 ms. One run does not say
+  what stalled.
 
-A rate at which runs differ like this has no headroom left. Abuse is
-injected ten times as often as in the demo, so every step stores enough
-alerts to measure.
+Abuse is injected ten times as often as in the demo, so every step stores
+enough alerts to measure.
+
+**Earlier runs on the same laptop sustained less:** 100,000 events/s at
+`a1234cb` ([bench-before](results/profiling/bench-before/README.md)) and
+80,000 at `344ffd7` ([bench-after](results/profiling/bench-after/README.md)).
+Nothing on ingest's processing path changed between `344ffd7` and
+`e55dee4`, but the machine did. The WSL kernel went from 6.18.33 to
+6.18.40, and ingest used 1.12 cores at 80,000 events/s instead of 1.61. A
+ceiling here describes the machine's state as much as the code.
 
 ### What limits throughput
 
@@ -59,18 +69,15 @@ detectors.
 
 - **Ingest saturates first.** Ingest restores per-symbol order by reading
   all four raw feeds of a partition together, in one loop over every
-  partition it owns. Between 80,000 and 100,000 events/s, ingest's CPU
-  stopped rising (1.61 to 1.49 cores in the latest run, 1.63 to 1.57 in the
-  one before), while its lag grew.
-- **At 100,000 its loop needs about a whole core.** The profile at 80,000
-  events/s puts the loop at 0.79 of a core, 9.8 µs per event
-  ([profiling](results/profiling/README.md)). At 100,000 events/s that is
-  0.98 of a core.
-- **Not the machine as a whole.** At 100,000 events/s the TradeWatch
-  services together used 4.92 cores of the 16 logical CPUs (marketsim
-  1.43, ingest 1.49, the detectors 1.75, the alert sink 0.22, the API
-  0.03). The bench does not measure Kafka, Postgres or the monitoring
-  stack. The limit is the one loop, not total CPU.
+  partition it owns. Between 120,000 and 150,000 events/s its CPU stopped
+  rising, at 1.58 cores, while its lag grew. The CPU profiles in
+  [results/profiling](results/profiling/README.md) show that loop as the
+  largest part of ingest's work.
+- **Not the machine as a whole.** At 150,000 events/s the TradeWatch
+  services together used 5.40 cores of the 16 logical CPUs (marketsim
+  1.58, ingest 1.58, the detectors 1.96, the alert sink 0.24, the API
+  0.04). The bench does not measure Kafka, Postgres or the monitoring
+  stack.
 
 Ingest is a consumer group, so more instances would split the partitions
 between them. That has not been measured here.

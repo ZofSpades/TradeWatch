@@ -95,7 +95,7 @@ published during the profile.
 
 **The pipeline.** `make bench` ran before the fix, at `a1234cb`
 ([bench-before](bench-before/README.md)), and after it, at `344ffd7`
-([results/bench](../bench/README.md)):
+([bench-after](bench-after/README.md)):
 
 | Offered | p99 event to stored alert, before | after | ingest CPU, before | after |
 | ---: | ---: | ---: | ---: | ---: |
