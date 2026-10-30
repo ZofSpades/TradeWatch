@@ -36,22 +36,22 @@ ground-truth label, then prints the alert that matches it. From
 [a run on Kubernetes](docs/results/k8s/README.md):
 
 ```text
-wash.ring on WREN
-  Ground truth  label live-20261015T123524Z-001/0005: 3 accounts ACC-0062,
-                ACC-0092, ACC-0003, 18 orders, 12:39:06.493 to 12:40:02.405
+wash.ring on ORBT
+  Ground truth  label live-20261030T161255Z-001/0004: 3 accounts ACC-0062,
+                ACC-0092, ACC-0003, 22 orders, 16:13:07.292 to 16:15:08.584
   Alert         wash_trading by rule TW-WASH-001 v2 (MAR-WASH), severity high,
-                score 75, detected 13.2 s into the episode in simulated time
+                score 75, detected 13.9 s into the episode in simulated time
   Why           Accounts ACC-0003, ACC-0062, ACC-0092, held by 3 different
-                beneficial owners, traded WREN with each other in a closed
-                cycle of 3 legs within 13.2 s. Every leg looked pre-arranged,
+                beneficial owners, traded ORBT with each other in a closed
+                cycle of 3 legs within 13.8 s. Every leg looked pre-arranged,
                 and the smallest leg was 100% of the largest, so the shares
                 went round the circle and back with no net change in
                 ownership.
-  Dashboard     http://localhost:3000/#/alerts/2924039e22fd235ec9da175bf087ec29
+  Dashboard     http://localhost:3000/#/alerts/fefe95dfc6ed4ff872166f680fbf4e46
 ```
 
 Not every episode is detected. The demo injects a missed scenario again on
-another symbol, up to three times; in that run the first ring was missed.
+another symbol, up to three times.
 
 ## Architecture
 
