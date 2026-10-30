@@ -130,8 +130,8 @@ func (rp *replayer) run(id int64, path string, set *rules.Set) {
 	switch {
 	case err == nil:
 		types = eval.ScoreAlerts("replay", out.Alerts[0], out.Labels).Summary()
-		summary = fmt.Sprintf("%d events on %d symbols; %d labelled episodes; %d alerts",
-			out.Events, out.Symbols, len(out.Labels), len(out.Alerts[0]))
+		summary = fmt.Sprintf("%s on %s; %s; %s", count(out.Events, "event"), count(out.Symbols, "symbol"),
+			count(len(out.Labels), "labelled episode"), count(len(out.Alerts[0]), "alert"))
 	case rp.ctx.Err() != nil:
 		err = errors.New("the API stopped before the replay finished")
 	}
@@ -244,4 +244,12 @@ func (s *Server) getEvaluation(w http.ResponseWriter, r *http.Request) {
 	default:
 		writeJSON(w, http.StatusOK, evaluationJSON(run))
 	}
+}
+
+// count is "1 alert" or "<n> alerts".
+func count(n int, noun string) string {
+	if n == 1 {
+		return "1 " + noun
+	}
+	return strconv.Itoa(n) + " " + noun + "s"
 }

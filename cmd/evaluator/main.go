@@ -16,6 +16,7 @@ import (
 	"os/signal"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"syscall"
 	"time"
 
@@ -172,7 +173,8 @@ func (r *recorder) finish(rep *eval.Report, runErr error) error {
 	for _, s := range rep.Production.ByType {
 		episodes, alerts, clean = episodes+s.Labels, alerts+s.Alerts, clean+s.CleanAlerts
 	}
-	summary := fmt.Sprintf("%d labelled episodes; %d alerts on the sessions with abuse and %d on those without", episodes, alerts, clean)
+	summary := fmt.Sprintf("%s; %s on the sessions with abuse and %d on those without",
+		count(episodes, "labelled episode"), count(alerts, "alert"), clean)
 	return r.st.FinishEvaluation(ctx, r.run.ID, summary, rep.Production.Summary(), nil)
 }
 
@@ -180,4 +182,12 @@ func (r *recorder) close() {
 	if r != nil {
 		r.st.Close()
 	}
+}
+
+// count is "1 alert" or "<n> alerts".
+func count(n int, noun string) string {
+	if n == 1 {
+		return "1 " + noun
+	}
+	return strconv.Itoa(n) + " " + noun + "s"
 }
