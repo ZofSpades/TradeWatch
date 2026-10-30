@@ -128,23 +128,44 @@ func (t *RefDataTail) Run(ctx context.Context) {
 func (t *RefDataTail) CatchUp(ctx context.Context, timeout time.Duration) error {
 	ctx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
-	ends, err := t.adm.ListEndOffsets(ctx, t.topic)
+	end, err := t.endOffset(ctx)
 	if err != nil {
-		return fmt.Errorf("refdata end offsets: %w", err)
+		return err
 	}
-	end, ok := ends.Lookup(t.topic, 0)
-	if !ok || end.Err != nil {
-		return errors.New("refdata end offset unavailable")
-	}
-	for t.consumed.Load() < end.Offset {
+	for t.consumed.Load() < end {
 		select {
 		case <-ctx.Done():
-			return fmt.Errorf("refdata at offset %d, want %d: %w", t.consumed.Load(), end.Offset, ctx.Err())
+			return fmt.Errorf("refdata at offset %d, want %d: %w", t.consumed.Load(), end, ctx.Err())
 		case <-time.After(5 * time.Millisecond):
 		}
 	}
 	t.lastSync.Store(time.Now().UnixNano())
 	return nil
+}
+
+// endOffset returns the end offset of the refdata partition. Just after the
+// topic is created, the broker may not report it yet, so it asks again
+// until ctx ends.
+func (t *RefDataTail) endOffset(ctx context.Context) (int64, error) {
+	for {
+		ends, err := t.adm.ListEndOffsets(ctx, t.topic)
+		if err == nil {
+			end, ok := ends.Lookup(t.topic, 0)
+			switch {
+			case !ok:
+				err = errors.New("no partition 0")
+			case end.Err != nil:
+				err = end.Err
+			default:
+				return end.Offset, nil
+			}
+		}
+		select {
+		case <-ctx.Done():
+			return 0, fmt.Errorf("refdata end offset unavailable: %w", err)
+		case <-time.After(100 * time.Millisecond):
+		}
+	}
 }
 
 // SyncedWithin reports whether a CatchUp succeeded within the last d.
